@@ -34,4 +34,3 @@ s <- apply(G[,which(!fixed)], 4, function(g)
 	wf_2loc_1pop(T=as.integer(T), B=as.integer(B), N=10000.0, U=1e-8, R=0.001, G=g)
 )
 sim <- matrix(ncol=length(s), nrow=4, data=unlist(s))
-

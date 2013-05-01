@@ -1,12 +1,13 @@
-/***********************************************
+/************************************************************
 *	Simulate Wright-Fisher population using
 *	multinomial RVs for B pairs of bi-allelic
 *	loci with recombination rate r from gen. 0
 *	to gen. T. Initial configuration of haplotypes G
 *	with constant effective pop. size N, mutation
-*	rate U.
+*	rate U (no 1->0 mutations).
+*
 *	author: Sameer Soi
-***********************************************/
+************************************************************/
 
 
 using namespace Rcpp ;
@@ -22,7 +23,7 @@ double p = 0.0, q = 0.0, d = 0.0,
 	u = as<double>(U), // mutation rate
 	*prob = new double[4], 
 	*buff = new double[4] ;
-vector<double> g = as< vector<double> >(G) ;
+vector<double> g = as< vector<double> >(G) ; // initial haplotype configuration
 vector< vector<double> > res ; // 2d vector returned to R
 
 // Set up GSL RNG
@@ -38,13 +39,13 @@ res.resize(b) ;
 for(i = 0; i < b ; i++) {
 	res[i].resize(4) ;
 	for(j = 0; j < t; j++) {
-		d = (g[0] * g[3]) - (g[1] * g[2]) ; // linkage
-		prob[0] = (1-u)*(g[0] - r*d) - 2*u*g[0] ;
-		prob[1] = (1-u)*(g[1] + r*d) + u*(g[0] - g[1]) ;
-		prob[2] = (1-u)*(g[2] + r*d) + u*(g[0] - g[2]) ;
-		prob[3] = (1-u)*(g[3] - r*d) + u*(g[1] + g[2]) ;
-		// G(t+1) | G(t) ~ Multi(N,p11(t)-rD(t),p11(t)-rD(t),p11(t)-rD(t),
-		//	p11(t)-rD(t))
+		d = (g[0] * g[3]) - (g[1] * g[2]) ; // LD
+		// mutation and recombination
+		prob[0] = (1-u)*(1-u) * (g[0] - r*d) ;
+		prob[1] = (1-u)*g[1] + u*(1-u)*g[0] + (1-u)*(1-u)*r*d ;
+		prob[2] = (1-u)*g[2] + u*(1-u)*g[0] + (1-u)*(1-u)*r*d ;
+		prob[3] = g[3] + u*(1-u)*g[1] + u*(1-u)*g[2] + u*u*g[0] - (1-u)*(1-u)*r*d ;
+		// G(t+1) | G(t) ~ Multi(N,p0(t)-rD,p1(t)+rD,p2+rD,p3-rD)
 		gsl_ran_multinomial(rng, 4, n, prob, H) ;
 		for(k = 0 ; k < 4 ; k++) g[k] = ((double)H[k])/n ;
 	}
