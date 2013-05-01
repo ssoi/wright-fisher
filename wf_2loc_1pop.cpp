@@ -1,11 +1,11 @@
 /***********************************************
-* Simulate Wright-Fisher population using
-* multinomial RVs for B pairs of bi-allelic 
-* loci with recombination rate r from gen. 0 
-* to gen. T. Initial configuration of haplotypes G
-*	with constant effective pop. size N, mutation 
-* rate U.
-* author: Sameer Soi
+*	Simulate Wright-Fisher population using
+*	multinomial RVs for B pairs of bi-allelic
+*	loci with recombination rate r from gen. 0
+*	to gen. T. Initial configuration of haplotypes G
+*	with constant effective pop. size N, mutation
+*	rate U.
+*	author: Sameer Soi
 ***********************************************/
 
 
@@ -43,7 +43,9 @@ for(i = 0; i < b ; i++) {
 		prob[1] = (1-u)*(g[1] + r*d) + u*(g[0] - g[1]) ;
 		prob[2] = (1-u)*(g[2] + r*d) + u*(g[0] - g[2]) ;
 		prob[3] = (1-u)*(g[3] - r*d) + u*(g[1] + g[2]) ;
-		gsl_ran_multinomial(rng, 4, n, prob, H) ; // sample haplotypes
+		// G(t+1) | G(t) ~ Multi(N,p11(t)-rD(t),p11(t)-rD(t),p11(t)-rD(t),
+		//	p11(t)-rD(t))
+		gsl_ran_multinomial(rng, 4, n, prob, H) ;
 		for(k = 0 ; k < 4 ; k++) g[k] = ((double)H[k])/n ;
 	}
 	// load results and re-initialize buffer
@@ -52,6 +54,7 @@ for(i = 0; i < b ; i++) {
 		g[j] = buff[j] ;
 	}
 }
+
 // clean up memory
 delete[] H ;
 delete[] buff ;
