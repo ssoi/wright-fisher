@@ -2,35 +2,35 @@ library(inline)
 library(hexbin)
 library(multicore)
 
-# load C++ source code for WF simulation
+# load C++ source code for WF simulation of 2 loci in 1 pop
 wf_2loc_1pop_src <- paste(readLines("wf_2loc_1pop.cpp"), collapse="\n")
-wf_2loc_2pop_src <- paste(readLines("wf_2loc_2pop.cpp"), collapse="\n")
-# define Rcpp function signatures
-wf_2loc_1pop_sig <- signature(T="integer", B="integer", N="numeric", U="numeric", 
-	R="numeric", G="numeric")
-wf_2loc_2pop_sig <- signature(T="integer", B="integer", N="numeric", U="numeric", 
-	R="numeric", G="numeric", H="numeric", M="numeric")
-# compile source code
+wf_2loc_1pop_sig <- signature(T="integer", B="integer", N="numeric",
+	R="numeric", A="numeric")
 wf_2loc_1pop <- cfunction(wf_2loc_1pop_sig, body=wf_2loc_1pop_src, Rcpp=TRUE, 
 	includes=c("#include <gsl/gsl_randist.h>", "#include <gsl/gsl_rng.h>"), 
 	libargs="-lgsl -lgslcblas")
+
+# load C++ source code for WF simulation of 2 loci in 2 pop w/ migration
+wf_2loc_2pop_src <- paste(readLines("wf_2loc_2pop.cpp"), collapse="\n")
+wf_2loc_2pop_sig <- signature(T="integer", B="integer", N="numeric", R="numeric", 
+	A="numeric",  M="numeric")
 wf_2loc_2pop <- cfunction(wf_2loc_2pop_sig, body=wf_2loc_2pop_src, Rcpp=TRUE, 
 	includes=c("#include <gsl/gsl_randist.h>", "#include <gsl/gsl_rng.h>"), 
 	libargs="-lgsl -lgslcblas")
+
 # define simulation parameters
-S <- 1e5
-B <- 1 # number of loci 
-T <- 1e4 # number of generatnois
-N <- rep(1.0e3, 2) # effective population sizes
-M <- c(0.0001, 0.0001) # migration rates
-theta <- 0.04
-p <- rbeta(S, theta, theta)
-q <- rbeta(S, theta, theta)
-G <- apply(cbind(p, q), 1, function(f) 
-	return(c(prod(f), (1-f[1])*f[2], f[1]*(1-f[2]), prod(1-f)))
-)
-fixed <- apply(G, 2, function(g) any(g==1))
-s <- apply(G[,which(!fixed)], 4, function(g) 
-	wf_2loc_1pop(T=as.integer(T), B=as.integer(B), N=10000.0, U=1e-8, R=0.001, G=g)
-)
-sim <- matrix(ncol=length(s), nrow=4, data=unlist(s))
+b <- 200L # number of loci T <- 1000L # number of generations
+t <- c(100L, 800L, 1000L) # number of loci T <- 1000L # number of generations
+n <- c(10000, 10000, 3000) # effective population sizes
+m <- c(0.05, 0.000) # migration rates
+theta <- 2 
+rec <- seq(1e-6, 1e-4, length=50)
+res <- simplify2array(mclapply(rec, function(r) {
+	s <- wf_2loc_2pop(T=t, B=b, N=n, R=r, A=rep(theta, 4), M=m)
+	sim <- matrix(ncol=8, nrow=length(s), data=unlist(s), byrow=TRUE)
+	d1 <- sim[,1]*sim[,4] - sim[,2]*sim[,3]
+	d2 <- sim[,5]*sim[,8] - sim[,6]*sim[,7]
+	a <- d1 * (sim[,1] + sim[,2] - sim[,5] - sim[,6]) * 
+		(sim[,3] + sim[,4] - sim[,7] - sim[,8])
+	colMeans(cbind(d1, d2, a))
+}))
