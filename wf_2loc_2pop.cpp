@@ -3,8 +3,7 @@
 *	multinomial RVs for B pairs of bi-allelic
 *	loci with recombination rate r from gen. 0
 *	to gen. T. Initial configuration of haplotypes G
-*	with constant effective pop. size N, mutation
-*	rate U (no 1->0 mutations).
+*	with constant effective pop. size N
 *
 *	author: Sameer Soi
 ************************************************************/
@@ -83,8 +82,10 @@ for(i = 0; i < b ; i++) {
 			g2Sum = 0 ;
 			for(k = 0 ; k < 4 ; k++) g2Sum += g2[k] ;
 			for(k = 0 ; k < 4 ; k++) g2[k] /= g2Sum ;
+			cout << j << " Before " << g2[0] << " " << g2[1] << " " << g2[2] << " " << g2[3] << endl ;
 			gsl_ran_multinomial(rng, 4, (unsigned) ne[1], prob2, H2) ;
 			for(k = 0 ; k < 4 ; k++) g2[k] = ((double)H2[k])/ne[1] ;
+			cout << j << " After " << g2[0] << " " << g2[1] << " " << g2[2] << " " << g2[3] << endl ;
 		}
 	}
 	// load results and re-initialize buffer
