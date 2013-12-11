@@ -32,8 +32,3 @@ wf_sim <- function(param) {
 	})
 	return(list(D1=sim[1,], D2=sim[2,], A1=sim[3,], A2=sim[4,]))
 }
-
-# generate "pseudo-observed dataset"
-rec <- seq(1e-6, 1e-3, length=50)
-pod <- wf_sim(param=list(T=c(1L, 150L, 200L), B=100L, Ne=c(1e4L, 1e4L, 3e3L),
-	A=c(2, 1, 1, 2), M=c(0.01, 0.0)))

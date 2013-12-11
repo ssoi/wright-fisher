@@ -3,14 +3,20 @@ library(truncnorm)
 # propose new parameters for Metropolis-Hastings
 wf_mh_propose <- function(param, cntl) {
 	proposal <- param
-	if(cntl$currIter %%% 2 == 1) {
-		proposal$M1 <- rtruncnorm(n=1, mu=params$M1, sigma=cntl$sigma.m, 
-			lower=0, upper=1)
+	if(cntl$currIter %% 2 == 1) {
+		proposal$M1 <- rtruncnorm(n=1, mean=param$M1, sd=cntl$sigma.m, 
+			a=0, b=1)
+		#proposal$M1 <- rtruncnorm(n=1, mu=param$M1, sigma=cntl$sigma.m, 
+		#	lower=0, upper=1)
 	} else {
-		proposal$M2 <- rtruncnorm(n=1, mu=params$M2, sigma=cntl$sigma.m, 
-			lower=0, upper=1)
+		proposal$M2 <- rtruncnorm(n=1, mean=param$M2, sd=cntl$sigma.m, 
+			a=0, b=1)
+		#proposal$M2 <- rtruncnorm(n=1, mu=param$M2, sigma=cntl$sigma.m, 
+		#	lower=0, upper=1)
 	}
+	return(proposal)
 }
+
 # Metropolis-Hastings ABC/BIL step
 wf_mh_step <- function(obs, param, cntl) {
 	t <- c(param$Tmig, param$Tdiv)
@@ -21,19 +27,20 @@ wf_mh_step <- function(obs, param, cntl) {
 	sim <- wf_sim(param=list(T=t, B=b, Ne=ne, A=a, M=m))
 	if(cntl$currIter %% 2 == 1) {			
 		model <- nls(A ~ C0*exp(-C1*r-C2*r^2), data=data.frame(A=sim$A1, r=rec),
-			start=list(C0=1, C1=1))
+			start=list(C0=1, C1=1, C2=1))
 		loglik <- dnorm(x=sum(obs$A1 - fitted(model)), mean=0,
 			sd=sd(sim$A1 - fitted(model)), log=TRUE)
 	} else {
-		model <- nls(A ~ C0*exp(-C1*r-C2*r^2), data=data.frame(A=sim$A2, r=rec),
+		model <- nls(A ~ C0*exp(-C1*r), data=data.frame(A=sim$A2, r=rec),
 			start=list(C0=1, C1=1))
 		loglik <- dnorm(x=sum(obs$A2 - fitted(model)), mean=0,
 			sd=sd(sim$A2 - fitted(model)), log=TRUE)
 	}
+	alpha <- min(0, loglik - param$loglik
 	if(runif(1) < loglik) {
-		acc <- 1
+		return(list(acc=TRUE, param=))
 	} else {
-		acc <- 0
+		return(list(acc=FALSE, param=loglik))
 	}
 }
 
@@ -64,15 +71,34 @@ param <- data.frame(
 	alpha3=rep(NA, numIters), 
 	alpha4=rep(NA, numIters), 
 	Tmig=rep(NA, numIters), 
-	Tdiv=rep(NA, numIters)
+	Tdiv=rep(NA, numIters),
+	loglik=rep(NA, numIters)
 )
 
 # initialize MCMC chain
-param$Ne1[1] <- param$Ne2[1] <- 1e3L
+param$Ne1[1] <- 1e4L
+param$Ne2[1] <- 3e3L
 param$M1[1] <- param$M2[1] <- 0
-param$alpha1[1] <- param$alpha2[1] <- param$alpha3[1] <- param$alpha4[1] <- 0
-param$Tdiv[1] <- 50 
-param$Tmig[1] <- 100 
+param$alpha1[1] <- param$alpha4[1] <- 2
+param$alpha2[1] <- param$alpha3[1] <- 1
+param$Tmig[1] <- 150L 
+param$Tdiv[1] <- 200L
+
+# calculate log-likelihood of initial state of chain
+mh <- wf_mh_step(obs=pod, param=param[1,], cntl=cntl)
+mh$loglik[1] <- mh$loglik
+
+# run chain
 for(iter in 2:numIters) {
-	proposal <- 
+	cntl$currIter <- iter
+	repeat {
+		proposal <- try(wf_mh_propose(param[iter-1,], cntl))
+		if(class(proposal) != "try-error") break
+	}	
+	mh <- wf_mh_step(obs=pod, param=proposal, cntl=cntl)
+	if(mh$acc) {
+		param[iter,] <- proposal
+	} else {
+		param[iter,] <- param[iter-1,] 
+	}
 }
