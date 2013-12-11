@@ -17,20 +17,23 @@ wf_2loc_2pop <- cfunction(wf_2loc_2pop_sig, body=wf_2loc_2pop_src, Rcpp=TRUE,
 	includes=c("#include <gsl/gsl_randist.h>", "#include <gsl/gsl_rng.h>"), 
 	libargs="-lgsl -lgslcblas")
 
-wf_sim <- function(pars) {
+wf_sim <- function(param) {
 	sim <- sapply(rec, function(r) {
-		s <- wf_2loc_2pop(T=pars$T, B=pars$B, N=pars$Ne, R=r, A=pars$A, M=pars$M)
+		s <- wf_2loc_2pop(T=param$T, B=param$B, N=param$Ne, R=r, A=param$A, 
+			M=param$M)
 		mat <- matrix(ncol=8, nrow=length(s), data=unlist(s), byrow=TRUE)
 		d1 <- mat[,1]*mat[,4] - mat[,2]*mat[,3] # LD in pop 1
 		d2 <- mat[,5]*mat[,8] - mat[,6]*mat[,7] # LD in pop 2
-		a <- d1 * (mat[,5]+mat[,6]-mat[,1]-mat[,2]) * 
+		delta <- (mat[,5]+mat[,6]-mat[,1]-mat[,2]) * 
 			(mat[,7]+mat[,8]-mat[,3]-mat[,4]) # calculate ALDER w.r.t. pop 1
-		colMeans(cbind(d1, d2, a))
+		a1 <- d1*delta
+		a2 <- d2*delta
+		colMeans(cbind(d1, d2, a1, a2))
 	})
-	return(sim)
+	return(list(D1=sim[1,], D2=sim[2,], A1=sim[3,], A2=sim[4,]))
 }
 
 # generate "pseudo-observed dataset"
 rec <- seq(1e-6, 1e-3, length=50)
-pod <- wf_sim(pars=list(T=c(1L, 150L, 200L), B=100L, Ne=c(1e4L, 1e4L, 1e4L),
+pod <- wf_sim(param=list(T=c(1L, 150L, 200L), B=100L, Ne=c(1e4L, 1e4L, 3e3L),
 	A=c(2, 1, 1, 2), M=c(0.01, 0.0)))
