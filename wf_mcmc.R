@@ -1,46 +1,56 @@
 library(truncnorm)
+source("wf_sim.R")
+
+# density of truncated normal
+dtnorm <- function(x, mean, sd, a, b) 
+	dnorm(x, mean, sd)/(sd*(pnorm(b, mean, sd) - pnorm(a, mean, sd)))
 
 # propose new parameters for Metropolis-Hastings
-wf_mh_propose <- function(param, cntl) {
+wf_mh_propose <- function(param, cntl) {	
 	proposal <- param
 	if(cntl$currIter %% 2 == 1) {
-		proposal$M1 <- rtruncnorm(n=1, mean=param$M1, sd=cntl$sigma.m, 
-			a=0, b=1)
-		#proposal$M1 <- rtruncnorm(n=1, mu=param$M1, sigma=cntl$sigma.m, 
-		#	lower=0, upper=1)
+		#proposal$M1 <- rtruncnorm(n=1, mean=param$M1, sd=cntl$sigma.M, 
+		#	a=0, b=1)
+		proposal$M1 <- rtruncnorm(n=1, mu=param$M1, sigma=cntl$sigma.M, 
+			lower=0, upper=1)
 	} else {
-		proposal$M2 <- rtruncnorm(n=1, mean=param$M2, sd=cntl$sigma.m, 
-			a=0, b=1)
-		#proposal$M2 <- rtruncnorm(n=1, mu=param$M2, sigma=cntl$sigma.m, 
-		#	lower=0, upper=1)
+		#proposal$M2 <- rtruncnorm(n=1, mean=param$M2, sd=cntl$sigma.M, 
+		#	a=0, b=1)
+		proposal$M2 <- rtruncnorm(n=1, mu=param$M2, sigma=cntl$sigma.M, 
+			lower=0, upper=1)
 	}
 	return(proposal)
 }
 
 # Metropolis-Hastings ABC/BIL step
-wf_mh_step <- function(obs, param, cntl) {
-	t <- c(param$Tmig, param$Tdiv)
+wf_mh_step <- function(obs, curr, prev, cntl, init=F) {
+	t <- c(curr$Tmig, curr$Tdiv)
 	b <- cntl$B
-	ne <- c(param$Ne1, param$Ne2)
-	m <- c(param$M1, param$M2)
-	a <- c(param$alpha1, param$alpha2, param$alpha3, param$alpha4)
+	ne <- c(curr$Ne1, curr$Ne2)
+	m <- c(curr$M1, curr$M2)
+	a <- c(curr$alpha1, curr$alpha2, curr$alpha3, curr$alpha4)
 	sim <- wf_sim(param=list(T=t, B=b, Ne=ne, A=a, M=m))
 	if(cntl$currIter %% 2 == 1) {			
 		model <- nls(A ~ C0*exp(-C1*r-C2*r^2), data=data.frame(A=sim$A1, r=rec),
 			start=list(C0=1, C1=1, C2=1))
-		loglik <- dnorm(x=sum(obs$A1 - fitted(model)), mean=0,
+		curr$loglik <- dnorm(x=sum(obs$A1 - fitted(model)), mean=0,
 			sd=sd(sim$A1 - fitted(model)), log=TRUE)
+		q01 <- log(dtnorm(x=curr$M1, mean=prev$M1, sd=cntl$sigma.M, a=0, b=1))
+		q10 <- log(dtnorm(x=prev$M1, mean=curr$M1, sd=cntl$sigma.M, a=0, b=1))
 	} else {
 		model <- nls(A ~ C0*exp(-C1*r), data=data.frame(A=sim$A2, r=rec),
 			start=list(C0=1, C1=1))
-		loglik <- dnorm(x=sum(obs$A2 - fitted(model)), mean=0,
+		curr$loglik <- dnorm(x=sum(obs$A2 - fitted(model)), mean=0,
 			sd=sd(sim$A2 - fitted(model)), log=TRUE)
+		q01 <- log(dtnorm(x=curr$M2, mean=prev$M2, sd=cntl$sigma.M, a=0, b=1))
+		q10 <- log(dtnorm(x=prev$M2, mean=curr$M2, sd=cntl$sigma.M, a=0, b=1))
 	}
-	alpha <- min(0, loglik - param$loglik
+	if(init) return(list(acc=NA, param=curr))
+	alpha <- min(0, curr$loglik + q10 - prev$loglik - q01)
 	if(runif(1) < loglik) {
-		return(list(acc=TRUE, param=))
+		return(list(acc=TRUE, param=curr))
 	} else {
-		return(list(acc=FALSE, param=loglik))
+		return(list(acc=FALSE, param=prev))
 	}
 }
 
@@ -54,7 +64,7 @@ pod <- wf_sim(param=list(T=c(1L, 150L, 200L), B=100L, Ne=c(1e4L, 1e4L, 3e3L),
 cntl <- list() # proposal, log-likelihood, and other deets for MCMC
 cntl$currIter <- 1 # current iteration of MCMC chain
 cntl$B <- 100 # number of replicates per simulation
-cntl$sigma.m <- 0.001 # s.d. for migration proposal
+cntl$sigma.M <- 0.001 # s.d. for migration proposal
 cntl$sigma.Ne <- 0.001 # s.d. for migration proposal
 cntl$sigma.Tm <- 1 # s.d. for time of migration proposal
 cntl$sigma.Tdiv <- 1 # s.d. for time of divergence proposal
@@ -85,17 +95,16 @@ param$Tmig[1] <- 150L
 param$Tdiv[1] <- 200L
 
 # calculate log-likelihood of initial state of chain
-mh <- wf_mh_step(obs=pod, param=param[1,], cntl=cntl)
-mh$loglik[1] <- mh$loglik
+param[1,] <- wf_mh_step(obs=pod, curr=param[1,], prev=param[1,], cntl=cntl, init=T)
 
 # run chain
 for(iter in 2:numIters) {
 	cntl$currIter <- iter
+	proposal <- try(wf_mh_propose(param[iter-1,], cntl))
 	repeat {
-		proposal <- try(wf_mh_propose(param[iter-1,], cntl))
-		if(class(proposal) != "try-error") break
+		mh <- wf_mh_step(obs=pod, curr=proposal, prev=param[iter-1,], cntl=cntl)
+		if(class(mh) != "try-error") break
 	}	
-	mh <- wf_mh_step(obs=pod, param=proposal, cntl=cntl)
 	if(mh$acc) {
 		param[iter,] <- proposal
 	} else {
