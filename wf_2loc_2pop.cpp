@@ -20,7 +20,6 @@ unsigned int i = 0, j = 0, k = 0, l = 0,
 double p = 0.0, q = 0.0, d1 = 0.0, d2 = 0.0,
 	g1Sum, g2Sum,
 	r = as<double>(R), // recombination rate
-	//u = as<double>(U), // mutation rate
 	*ne = new double[2], 
 	*mig = new double[2], 
 	*g1 = new double[4], 
