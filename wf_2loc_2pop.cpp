@@ -13,7 +13,7 @@ using std::cout ;
 using std::endl ;
 using std::vector ;
 
-unsigned int  i = 0, j = 0, k = 0,
+unsigned int i = 0, j = 0, k = 0, l = 0,
 	b = as<unsigned int>(B), // # of 2-locus pairs
 	*H1 = new unsigned int[4],
 	*H2 = new unsigned int[4] ;
@@ -71,6 +71,15 @@ for(i = 0; i < b ; i++) {
 		for(k = 0 ; k < 4 ; k++) g1[k] /= g1Sum ;
 		// G(t+1) | G(t) ~ Multi(N,p0(t)-rD,p1(t)+rD,p2+rD,p3-rD)
 		gsl_ran_multinomial(rng, 4, (unsigned int) ne[0], prob1, H1) ;
+		if(isnan(g1[0]) || isnan(g1[1]) || isnan(g1[2]) || isnan(g1[3]))  {
+			cout << "A " << i << " " << j << " " << g1Sum << " | " ; 
+			for(k = 0 ; k < 4 ; k++) 
+				cout << prob1[k] << " " ;
+			cout << "| " ;
+			for(k = 0 ; k < 4 ; k++) 
+				cout << g1[k] << " " ;
+			cout << endl ;
+		}
 		for(k = 0 ; k < 4 ; k++) g1[k] = ((double)H1[k])/ne[0] ;
 		if(j >= t[0]) {
 			d2 = (g2[0] * g2[3]) - (g2[1] * g2[2]) ; // LD
@@ -84,6 +93,15 @@ for(i = 0; i < b ; i++) {
 			for(k = 0 ; k < 4 ; k++) g2[k] /= g2Sum ;
 			gsl_ran_multinomial(rng, 4, (unsigned) ne[1], prob2, H2) ;
 			for(k = 0 ; k < 4 ; k++) g2[k] = ((double)H2[k])/ne[1] ;
+			if(isnan(g2[0]) || isnan(g2[1]) || isnan(g2[2]) || isnan(g2[3]))  {
+				cout << "B " << i << " " << j << " " << g2Sum << " | " ; 
+				for(k = 0 ; k < 4 ; k++) 
+					cout << prob2[k] << " " ;
+				cout << "| " ;
+				for(k = 0 ; k < 4 ; k++) 
+					cout << g2[k] << " " ;
+				cout << endl ;
+			}
 		}
 	}
 	// load results and re-initialize buffer

@@ -24,7 +24,7 @@ wf_mh_propose <- function(param, cntl) {
 
 # Metropolis-Hastings ABC/BIL step
 wf_mh_step <- function(obs, curr, prev, cntl, init=F) {
-	t <- c(curr$Tmig, curr$Tdiv)
+	t <- c(1L, curr$Tmig, curr$Tdiv)
 	b <- cntl$B
 	ne <- c(curr$Ne1, curr$Ne2)
 	m <- c(curr$M1, curr$M2)
@@ -57,13 +57,13 @@ wf_mh_step <- function(obs, curr, prev, cntl, init=F) {
 # generate "pseudo-observed dataset"
 # alternatively read in data set (future)
 rec <- seq(1e-5, 1e-2, length=100)
-pod <- wf_sim(param=list(T=c(1L, 150L, 200L), B=100L, Ne=c(1e4L, 1e4L, 3e3L), 
+pod <- wf_sim(param=list(T=c(1L, 150L, 200L), B=1L, Ne=c(1e4L, 1e4L, 3e3L), 
 	A=c(2, 1, 1, 2), M=c(0.01, 0.0)))
 
-# define control for control MCMC
+# define control for control MCMC	
 cntl <- list() # proposal, log-likelihood, and other deets for MCMC
 cntl$currIter <- 1 # current iteration of MCMC chain
-cntl$B <- 100 # number of replicates per simulation
+cntl$B <- 1 # number of replicates per simulation
 cntl$sigma.M <- 0.001 # s.d. for migration proposal
 cntl$sigma.Ne <- 0.001 # s.d. for migration proposal
 cntl$sigma.Tm <- 1 # s.d. for time of migration proposal
@@ -95,7 +95,8 @@ param$Tmig[1] <- 150L
 param$Tdiv[1] <- 200L
 
 # calculate log-likelihood of initial state of chain
-param[1,] <- wf_mh_step(obs=pod, curr=param[1,], prev=param[1,], cntl=cntl, init=T)
+wf_mh_step(obs=pod, curr=param[1,], prev=param[1,], cntl=cntl, init=T)
+#param[1,] <- wf_mh_step(obs=pod, curr=param[1,], prev=param[1,], cntl=cntl, init=T)
 
 # run chain
 for(iter in 2:numIters) {
