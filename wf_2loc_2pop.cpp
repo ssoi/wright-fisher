@@ -9,8 +9,6 @@
 ************************************************************/
 
 using namespace Rcpp ;
-using std::cout ;
-using std::endl ;
 using std::vector ;
 
 unsigned int i = 0, j = 0, k = 0, l = 0,
@@ -22,6 +20,7 @@ double p = 0.0, q = 0.0, d1 = 0.0, d2 = 0.0,
 	r = as<double>(R), // recombination rate
 	*ne = new double[2], 
 	*mig = new double[2], 
+	*tmp = new double[4], 
 	*g1 = new double[4], 
 	*g2 = new double[4], 
 	*prob1 = new double[4], 
@@ -44,7 +43,10 @@ rng = gsl_rng_alloc(rngType) ;
 // Begin simulation
 ne[0] = (double) n[0] ;
 mig[0] = mig[1] = 0.0 ;
-for(i = 0 ; i < 4 ; i++) alpha[i] = a[i] ;
+for(i = 0 ; i < 4 ; i++) {
+	prob1[i] = prob2[i] = g1[i] = g2[i] = 0 ;
+	alpha[i] = a[i] ;
+}
 gsl_ran_dirichlet(rng, 4, alpha, g1) ;
 for(i = 0 ; i < 4 ; i++) buff[i] = g1[i] ;
 res.resize(b) ;
@@ -65,20 +67,10 @@ for(i = 0; i < b ; i++) {
 		prob1[1] = (g1[1] + g2[1]*mig[0]) + r*d1 ;
 		prob1[2] = (g1[2] + g2[2]*mig[0]) + r*d1 ;
 		prob1[3] = (g1[3] + g2[3]*mig[0]) - r*d1 ;
-		g1Sum = 0 ;
-		for(k = 0 ; k < 4 ; k++) g1Sum += g1[k] ;
-		for(k = 0 ; k < 4 ; k++) g1[k] /= g1Sum ;
-		// G(t+1) | G(t) ~ Multi(N,p0(t)-rD,p1(t)+rD,p2+rD,p3-rD)
+		for(g1Sum = 0, k = 0 ; k < 4 ; k++) g1Sum += g1[k] ;
+		for(k = 0 ; k < 4 ; k++) g1[k] = g1[k]/g1Sum ;
+		for(k = 0 ; k < 4 ; k++) tmp[k] = g1[k] ;
 		gsl_ran_multinomial(rng, 4, (unsigned int) ne[0], prob1, H1) ;
-		if(isnan(g1[0]) || isnan(g1[1]) || isnan(g1[2]) || isnan(g1[3]))  {
-			cout << "A " << i << " " << j << " " << g1Sum << " | " ; 
-			for(k = 0 ; k < 4 ; k++) 
-				cout << prob1[k] << " " ;
-			cout << "| " ;
-			for(k = 0 ; k < 4 ; k++) 
-				cout << g1[k] << " " ;
-			cout << endl ;
-		}
 		for(k = 0 ; k < 4 ; k++) g1[k] = ((double)H1[k])/ne[0] ;
 		if(j >= t[0]) {
 			d2 = (g2[0] * g2[3]) - (g2[1] * g2[2]) ; // LD
@@ -86,21 +78,10 @@ for(i = 0; i < b ; i++) {
 			prob2[1] = (g2[1] + g1[1]*mig[1]) + r*d2 ;
 			prob2[2] = (g2[2] + g1[2]*mig[1]) + r*d2 ;
 			prob2[3] = (g2[3] + g1[3]*mig[1]) - r*d2 ;
-			// G(t+1) | G(t) ~ Multi(N,p0(t)-rD,p1(t)+rD,p2+rD,p3-rD)
-			g2Sum = 0 ;
-			for(k = 0 ; k < 4 ; k++) g2Sum += g2[k] ;
-			for(k = 0 ; k < 4 ; k++) g2[k] /= g2Sum ;
-			gsl_ran_multinomial(rng, 4, (unsigned) ne[1], prob2, H2) ;
-			for(k = 0 ; k < 4 ; k++) g2[k] = ((double)H2[k])/ne[1] ;
-			if(isnan(g2[0]) || isnan(g2[1]) || isnan(g2[2]) || isnan(g2[3]))  {
-				cout << "B " << i << " " << j << " " << g2Sum << " | " ; 
-				for(k = 0 ; k < 4 ; k++) 
-					cout << prob2[k] << " " ;
-				cout << "| " ;
-				for(k = 0 ; k < 4 ; k++) 
-					cout << g2[k] << " " ;
-				cout << endl ;
-			}
+			for(g2Sum = 0, k = 0 ; k < 4 ; k++) g2Sum += g2[k] ;
+			for(k = 0 ; k < 4 ; k++) g2[k] = g2[k]/g2Sum ;
+			gsl_ran_multinomial(rng, 4, (unsigned int) ne[1], prob2, H2) ;
+			for(k = 0 ; k < 4 ; k++) g2[k] = ((double) H2[k])/ne[1] ;
 		}
 	}
 	// load results and re-initialize buffer
