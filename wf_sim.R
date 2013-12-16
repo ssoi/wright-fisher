@@ -25,10 +25,10 @@ wf_sim <- function(param) {
 		d1 <- mat[,1]*mat[,4] - mat[,2]*mat[,3] # LD in pop 1
 		d2 <- mat[,5]*mat[,8] - mat[,6]*mat[,7] # LD in pop 2
 		delta <- (mat[,5]+mat[,6]-mat[,1]-mat[,2]) * 
-			(mat[,7]+mat[,8]-mat[,3]-mat[,4]) # calculate ALDER w.r.t. pop 1
+			(mat[,7]+mat[,8]-mat[,3]-mat[,4]) 
 		a1 <- d1*delta
 		a2 <- d2*delta
 		colMeans(cbind(d1, d2, a1, a2))
 	})
-	return(list(D1=sim[1,], D2=sim[2,], A1=sim[3,], A2=sim[4,]))
+	return(list(D1=sim[1,], D2=sim[2,], A1=sim[3,]))
 }
