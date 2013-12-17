@@ -27,10 +27,10 @@ double p = 0.0, q = 0.0, d1 = 0.0, d2 = 0.0,
 	*prob2 = new double[4], 
 	*alpha = new double[4], 
 	*buff = new double[4] ;
+vector<unsigned int> n = as< vector<unsigned int> >(N) ; // effective pop. sizes
 vector< vector<double> > res ; // 2d vector returned to R
 vector<double> a = as< vector<double> >(A) ; // Dirichlet parameters
 vector<double> m = as< vector<double> >(M) ; // migration rates
-vector<double> n = as< vector<double> >(N) ; // effective pop. sizes
 vector<double> t = as< vector<double> >(T) ; // # of generations
 
 // Set up GSL RNG

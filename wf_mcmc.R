@@ -39,7 +39,7 @@ wf_mh_step <- function(obs, curr, prev, cntl, init=F) {
 	m <- c(curr$M1, curr$M2)
 	a <- c(curr$alpha1, curr$alpha2, curr$alpha3, curr$alpha4)
 	# simulate data with proposed parameters
-	sim <- wf_sim(param=list(T=t, B=b, Ne=ne, A=a, M=m))
+	sim <- wf_sim(par=list(T=t, B=b, Ne=ne, A=a, M=m))
 	# fit curve and calculate likelihood based on multivariate normal
 	mu <- colSums(simplify2array(sim) - obs$aux)
 	curr$loglik <- dmvnorm(x=mu, sigma=obs$sigma, log=T)
@@ -69,8 +69,8 @@ wf_mh_step <- function(obs, curr, prev, cntl, init=F) {
 # generate "pseudo-observed dataset" and fit auxillary model
 # alternatively read in data set (future)
 rec <- seq(1e-5, 1e-2, length=50)
-pod <- wf_sim(param=list(T=c(1L, 300L, 400L), B=50L, Ne=c(1e4L, 1e4L, 3e3L), 
-	A=c(2, 1, 1, 2), M=c(0.01, 0.0)))
+pod <- wf_sim(par=list(T=c(1L, 300L, 400L), B=50L, Ne=c(1e4L, 1e4L, 3e3L), 
+	A=c(0.5, 0.1, 0.1, 0.5), M=c(0.01, 0.0)))
 aux <- lapply(pod, auxillary, x=rec)
 pod$aux <- simplify2array(sapply(aux, "[[", "Y"))
 pod$sigma <- cov(simplify2array(sapply(aux, "[[", "res")))
@@ -81,11 +81,12 @@ cntl$numIters <- 1e4 # length of chain
 cntl$currIter <- 1 # current iteration of MCMC chain
 cntl$B <- 50L # number of replicates per simulation
 cntl$sigma.M <- 0.01 # variance for migration proposal
-cntl$sigma.Ne <- 1e3 # variance for migration proposal
+cntl$sigma.Ne <- 4e3 # variance for migration proposal
 cntl$sigma2.M <- cntl$sigma.M^2 # variance for migration proposal
 cntl$sigma2.Ne <- cntl$sigma.Ne^2 # variance for migration proposal
 cntl$sigma.Tm <- 1 # variance for time of migration proposal
 cntl$sigma.Tdiv <- 1 # variance for time of divergence proposal
+cntl$acc <- numeric(cntl$numIters-1) # store acceptance rate
 
 # define parameters for posterior sampling 
 
@@ -107,8 +108,8 @@ param <- data.frame(
 param$Ne1[1] <- 1e3L
 param$Ne2[1] <- 1e3L
 param$M1[1] <- param$M2[1] <- 0
-param$alpha1[1] <- param$alpha4[1] <- 2
-param$alpha2[1] <- param$alpha3[1] <- 1
+param$alpha1[1] <- param$alpha4[1] <- 0.5 
+param$alpha2[1] <- param$alpha3[1] <- 0.1 
 param$Tmig[1] <- 300L 
 param$Tdiv[1] <- 400L
 
@@ -129,7 +130,7 @@ for(iter in 2:cntl$numIters) {
 		param[iter,] <- param[iter-1,] 
 	}
 	cntl$acc[iter-1] <- mh$acc
-	if(iter %% 10 < 4)
+	#if(iter %% 10 < 4)
 		print(paste(iter, ":", paste(round(proposal[1:4],4), collapse=" "), "|", 
 			paste(round(param[iter,c(1:4, 11)],4), collapse=" ")))
 }
