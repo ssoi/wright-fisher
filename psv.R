@@ -1,4 +1,60 @@
+library(mvtnorm)
+
+wf <- function(N, p, t, r) {
+	# simulate WF exactly
+	for(i in 2:t) {
+		D <- (p[1]*p[4] - p[2]*p[3])
+		p[1] <- p[1] - r*D
+		p[2] <- p[2] + r*D
+		p[3] <- p1[3] + r*D
+		p[4] <- p[4] - r*D
+		p1 <- rmultinom(n=1, size=N, prob=p1)/N
+		p2 <- rmultinom(n=1, size=N, prob=p2)/N
+	}
+	return(c(p1, p2))
+}
+
+wf_mig <- function(N, p0, t, r, tm, m) {
+	# simulate WF for 2 populations with migration
+	p2 <- p1 <- p1
+	for(i in 2:t) {
+		if(i <= tm) p1 <- m*p2 + (1-m)*(p1)
+		D <- (p1[1]*p1[4] - p1[2]*p1[3])
+		p1[1] <- p1[1] - r*D
+		p1[2] <- p1[2] + r*D
+		p1[3] <- p1[3] + r*D
+		p1[4] <- p1[4] - r*D
+		p2[1] <- p2[1] - r*D
+		p2[2] <- p2[2] + r*D
+		p2[3] <- p2[3] + r*D
+		p2[4] <- p2[4] - r*D
+		if(any(p1 < 0)) p1 <- pmax(0, p1)/sum(pmax(0, p1))
+		if(any(p2 < 0)) p2 <- pmax(0, p2)/sum(pmax(0, p2))
+		p1 <- as.numeric(rmultinom(n=1, size=N, prob=p1)/N)
+		p2 <- as.numeric(rmultinom(n=1, size=N, prob=p2)/N)
+	}
+	return(c(p1, p2))
+}
+
+diffuse <- function(N, p, t, r) {
+	# simulate WF diffusion using Gaussian
+	# with same mean and variance as multinomial probability
+	for(i in 2:t) {
+		D <- (p[1]*p[4] - p[2]*p[3])
+		p[1] <- p[1] - r*D
+		p[2] <- p[2] + r*D
+		p[3] <- p1[3] + r*D
+		p[4] <- p[4] - r*D
+		S <- outer(p, p)/N
+		diag(S) <- p*(1-p)/N
+		p <- p + as.numeric(rmvnorm(n=1, sigma=S))
+	}
+	return(p)
+}
+
 psv <- function(N, p, t, r) {
+	# approximate WF diffusion using U() variables 
+	# with same mean and variance as Gaussian noise 
 	a <- sqrt(3)
 	u <- matrix(nrow=t-1, ncol=3, runif(n=(t-1)*3, min=-a, max=a))
 	for(i in 2:t) {
@@ -26,6 +82,9 @@ psv <- function(N, p, t, r) {
 }
 
 psv2 <- function(N, p, t, r, i) {
+	# accelerate approximation using Euler method
+	# sum drift within interval [T,T+t/i)
+	# diffusion within interval [T,T+t/i) is proportial to sqrt(t/i)
 	delta <- t/i
 	a <- sqrt(3)
 	b <- sqrt(delta)
@@ -57,50 +116,4 @@ psv2 <- function(N, p, t, r, i) {
 	return(p)
 }
 
-wf <- function(N, p, t, r) {
-	for(i in 2:t) {
-		D <- (p[1]*p[4] - p[2]*p[3])
-		p[1] <- p[1] - r*D
-		p[2] <- p[2] + r*D
-		p[3] <- p1[3] + r*D
-		p[4] <- p[4] - r*D
-		p1 <- rmultinom(n=1, size=N, prob=p1)/N
-		p2 <- rmultinom(n=1, size=N, prob=p2)/N
-	}
-	return(c(p1, p2))
-}
-
-wf_mig <- function(N, p0, t, r, tm, m) {
-	p2 <- p1 <- p1
-	for(i in 2:t) {
-		if(i <= tm) p1 <- m*p2 + (1-m)*(p1)
-		D <- (p1[1]*p1[4] - p1[2]*p1[3])
-		p1[1] <- p1[1] - r*D
-		p1[2] <- p1[2] + r*D
-		p1[3] <- p1[3] + r*D
-		p1[4] <- p1[4] - r*D
-		p2[1] <- p2[1] - r*D
-		p2[2] <- p2[2] + r*D
-		p2[3] <- p2[3] + r*D
-		p2[4] <- p2[4] - r*D
-		if(any(p1 < 0)) p1 <- pmax(0, p1)/sum(pmax(0, p1))
-		if(any(p2 < 0)) p2 <- pmax(0, p2)/sum(pmax(0, p2))
-		p1 <- as.numeric(rmultinom(n=1, size=N, prob=p1)/N)
-		p2 <- as.numeric(rmultinom(n=1, size=N, prob=p2)/N)
-	}
-	return(c(p1, p2))
-}
-
-diffuse <- function(N, p, t, r) {
-	for(i in 2:t) {
-		D <- (p[1]*p[4] - p[2]*p[3])
-		p[1] <- p[1] - r*D
-		p[2] <- p[2] + r*D
-		p[3] <- p1[3] + r*D
-		p[4] <- p[4] - r*D
-		S <- outer(p, p)/N
-		diag(S) <- p*(1-p)/N
-		p <- p + as.numeric(rmvnorm(n=1, sigma=S))
-	}
-	return(p)
-}
+# ADD TESTS HERE TO VERIFY ACCURACY OF DIFFUSION AND PSV VERSUS EXACT SIMULATION
