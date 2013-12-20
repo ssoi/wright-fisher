@@ -6,8 +6,6 @@
  *****************************************************************/
 
 using namespace Rcpp ;
-using std::cout ;
-using std::endl ;
 using std::vector ;
 
 // [[Rcpp::export]]
@@ -28,6 +26,7 @@ double p = 0.0, q = 0.0, d = 0.0,
 	*c3 = new double[3] ;
 vector<double> a = as< vector<double> >(A) ; 
 vector< vector<double> > res ; // 2d vector returned to R
+
 
 // Set up GSL RNG
 gsl_rng_env_setup() ;
@@ -61,15 +60,15 @@ for(i = 0; i < b ; i++) {
 		eta[0] = sd[0] * u[0] ;
 		eta[1] = sd[1] * (c2[0] * u[0] + c2[1]*u[1]) ;
 		eta[2] = sd[2] * (c3[0] * u[0] + c3[1]*u[1] + c3[2]*u[2]) ;
-		for(tot=0.0, i = 0 ; i < 3 ; i++) {
-			g[i] += eta[i] ;
-			tot += g[i] ;
+		for(tot=0.0, k = 0 ; k < 3 ; k++) {
+			g[k] += eta[k] ;
+			tot += g[k] ;
 		}
 		g[3] = 1 - tot ;
-		}
-		// load results 
-		for(j = 0 ; j < 4 ; j++) res[i][j] = g[j] ;
-		// g[j] = buff[j] ;	
+	}
+	// load results 
+	for(j = 0 ; j < 4 ; j++) res[i][j] = g[j] ;
+	// g[j] = buff[j] ;	
 }
 
 // clean up memory
