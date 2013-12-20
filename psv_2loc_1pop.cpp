@@ -6,13 +6,15 @@
  *****************************************************************/
 
 using namespace Rcpp ;
+using std::cout ;
+using std::endl ;
 using std::vector ;
 
 // [[Rcpp::export]]
 unsigned int  i = 0, j = 0, k = 0,
 b = as<unsigned int>(B), // # of 2-locus pairs
 t = as<unsigned int>(T), // # of generations
-n = as<unsigned int>(N), // effective pop. size
+n = as<unsigned int>(N) ; // effective pop. size
 double p = 0.0, q = 0.0, d = 0.0, 
 	maxU=sqrt(3.0), minU=-sqrt(3.0),
 	tot, tmp1, tmp2, tmp3, 
@@ -39,7 +41,6 @@ res.resize(b) ;
 for(i = 0; i < b ; i++) {
 	res[i].resize(4) ;
 	gsl_ran_dirichlet(rng, 4, alpha, g) ;
-	for(j = 0 ; j < 4 ; j++) buff[j] = g[j] ;
 	for(j = 0; j < t; j++) {
 		d = (g[0] * g[3]) - (g[1] * g[2]) ; // LD
 		g[0] -= r*d ;
@@ -83,4 +84,3 @@ gsl_rng_free(rng) ;
 
 // return simulation results
 return(wrap(res)) ;
-}
