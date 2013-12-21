@@ -3,7 +3,7 @@ library(inline)
 
 # load C++ source code for WF simulation of 2 loci in 1 pop
 wf_2loc_1pop_src <- paste(readLines("wf_2loc_1pop.cpp"), collapse="\n")
-wf_2loc_1pop_sig <- signature(T="integer", B="integer", N="numeric",
+wf_2loc_1pop_sig <- signature(T="integer", B="integer", N="integer",
 	R="numeric", A="numeric")
 wf_2loc_1pop <- cfunction(wf_2loc_1pop_sig, body=wf_2loc_1pop_src, Rcpp=TRUE, 
 	includes=c("#include <gsl/gsl_randist.h>", "#include <gsl/gsl_rng.h>"), 
@@ -17,11 +17,19 @@ wf_2loc_2pop <- cfunction(wf_2loc_2pop_sig, body=wf_2loc_2pop_src, Rcpp=TRUE,
 	includes=c("#include <gsl/gsl_randist.h>", "#include <gsl/gsl_rng.h>"), 
 	libargs="-lgsl -lgslcblas")
 
-# load C++ source code for WF simulation of 2 loci in 2 pop w/ migration
+# load C++ source code for PSV simulation of 2 loci in 1 pop
 psv_2loc_1pop_src <- paste(readLines("psv_2loc_1pop.cpp"), collapse="\n")
-psv_2loc_1pop_sig <- signature(T="integer", B="integer", N="numeric",
+psv_2loc_1pop_sig <- signature(T="integer", B="integer", N="integer",
 	R="numeric", A="numeric")
 psv_2loc_1pop <- cfunction(psv_2loc_1pop_sig, body=psv_2loc_1pop_src, Rcpp=TRUE, 
+	includes=c("#include <gsl/gsl_randist.h>", "#include <gsl/gsl_rng.h>"), 
+	libargs="-lgsl -lgslcblas")
+
+# load C++ source code for PSV simulation of 2 loci in 1 pop
+psv_2loc_2pop_src <- paste(readLines("psv_2loc_2pop.cpp"), collapse="\n")
+psv_2loc_2pop_sig <- signature(T="integer", B="integer", N="integer", R="numeric", 
+	A="numeric",  M="numeric")
+psv_2loc_2pop <- cfunction(psv_2loc_2pop_sig, body=psv_2loc_2pop_src, Rcpp=TRUE, 
 	includes=c("#include <gsl/gsl_randist.h>", "#include <gsl/gsl_rng.h>"), 
 	libargs="-lgsl -lgslcblas")
 
@@ -41,3 +49,6 @@ wf_sim <- function(par) {
 	})
 	return(list(D1=sim[1,], D2=sim[2,], A1=sim[3,]))
 }
+
+system.time( res1 <- wf_2loc_1pop(T=100L, B=100L, N=10000L, R=0.001, A=c(4.0,1.0,1.0,4.0))  )
+system.time( res2 <- psv_2loc_1pop(T=100L, B=100L, N=10000L, R=0.001, A=c(4.0,1.0,1.0,4.0)) )

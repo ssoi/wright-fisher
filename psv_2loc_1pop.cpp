@@ -31,7 +31,7 @@ vector< vector<double> > res ; // 2d vector returned to R
 // Set up GSL RNG
 gsl_rng_env_setup() ;
 gsl_rng * rng ;
-const gsl_rng_type * rngType = gsl_rng_default ;
+const gsl_rng_type * rngType = gsl_rng_ranlxd1 ;
 rng = gsl_rng_alloc(rngType) ;
 
 // Begin simulation

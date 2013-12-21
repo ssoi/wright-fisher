@@ -22,8 +22,7 @@ double p = 0.0, q = 0.0, d = 0.0,
 	//u = as<double>(U), // mutation rate
 	*g = new double[4], 
 	*prob = new double[4], 
-	*alpha = new double[4], 
-	*buff = new double[4] ;
+	*alpha = new double[4] ; 
 vector<double> a = as< vector<double> >(A) ; // Dirichlet parameters
 vector< vector<double> > res ; // 2d vector returned to R
 
@@ -36,11 +35,10 @@ rng = gsl_rng_alloc(rngType) ;
 
 // Begin simulation
 for(i = 0 ; i < 4 ; i++) alpha[i] = a[i] ;
-gsl_ran_dirichlet(rng, 4, alpha, g) ;
-for(i = 0 ; i < 4 ; i++) buff[i] = g[i] ;
 res.resize(b) ;
 for(i = 0; i < b ; i++) {
 	res[i].resize(4) ;
+	gsl_ran_dirichlet(rng, 4, alpha, g) ;
 	for(j = 0; j < t; j++) {
 		d = (g[0] * g[3]) - (g[1] * g[2]) ; // LD
 		// mutation and recombination
@@ -52,16 +50,12 @@ for(i = 0; i < b ; i++) {
 		gsl_ran_multinomial(rng, 4, n, prob, H) ;
 		for(k = 0 ; k < 4 ; k++) g[k] = ((double)H[k])/n ;
 	}
-	// load results and re-initialize buffer
-	for(j = 0 ; j < 4 ; j++) {
-		res[i][j] = g[j] ;
-		g[j] = buff[j] ;
-	}
+	// load results 
+	for(j = 0 ; j < 4 ; j++) res[i][j] = g[j] ;
 }
 
 // clean up memory
 delete[] H ;
-delete[] buff ;
 delete[] prob ; 
 gsl_rng_free(rng) ;
 
