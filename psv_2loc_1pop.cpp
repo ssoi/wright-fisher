@@ -46,6 +46,7 @@ for(i = 0; i < b ; i++) {
 		g[1] += r*d ;
 		g[2] += r*d ;
 		g[3] -= r*d ;
+		for(k = 0 ; k < 3 ; k++) g[k] = g[k] > 0 ? g[k] : 0 ;
 		for(k = 0 ; k < 3 ; k++) u[k] = gsl_ran_flat(rng, minU, maxU) ;
 		for(k = 0 ; k < 4 ; k++) sd[k] = sqrt(g[k]*(1-g[k])/((double) n)) ;
 		tmp1 = g[0]*g[1]/((1-g[0])*(1-g[1])) ;

@@ -23,7 +23,7 @@ double p = 0.0, q = 0.0, d, d1, d2, I,
 	*alpha = new double[4], // Dirichlet parameters
 	*u = new double[3], // uniform variables
 	*eta = new double[3], // noise for PSV
-	*sd = new double[4], // desired standard deviation
+	*sd = new double[3], // desired standard deviation
 	*c2 = new double[2],
 	*c3 = new double[3] ;
 vector<unsigned int> n = as< vector<unsigned int> >(N),
@@ -48,20 +48,19 @@ for(i = 0; i < b ; i++) {
 	// Run PSV for T[1] generations
 	for(j = 0; j < t[1]; j++) {
 		// Simulate migration from pop 2 to 1 after T[0] generations
-		if(j > t[0])
-			for(k = 0; k < 4; k++) g[k] = m*g[k+4] + (1 - m)*g[k] ;
+		if(j > t[0]) for(k = 0; k < 4; k++) g[k] = m*g[k+4] + (1 - m)*g[k] ;
 		d1 = (g[0] * g[3]) - (g[1] * g[2]) ; // LD
 		d2 = (g[4] * g[7]) - (g[5] * g[6]) ; // LD
 		for(k = 0; k < 8; k++) {
-			if(k % 4 == 1 || k % 4 == 2) I = 1.0 ;
-			else I = -1.0 ;
-			d = k < 4 ? d1 : d2 ;
-			g[k] += I*r*d ;
+			I = k % 4 == 1 || k % 4 == 2 ? 1.0 : -1.0 ; // add recombinants if hets
+			g[k] = k < 4 ? g[k] + I*r*d1 : g[k] + I*r*d2 ; // recombination
+			g[k] = g[k] > 0.0 ? g[k] : 0.0 ; // make sure freqs > 0
 		}
-		for(k = 0 ; k < 2 ; k++) {
-			C = k < 1 ? 0 : 4 ;
-			for(l = 0 ; l < 3 ; l++) u[l] = gsl_ran_flat(rng, minU, maxU) ;
-			for(l = 0 ; l < 4 ; l++) sd[l] = sqrt(g[l+C]*(1-g[l+C])/((double) n[k])) ;
+		for(C = 0, k = 0 ; k < 2 ; k++, C+=4) {	
+			for(l = 0 ; l < 3 ; l++) {
+				u[l] = gsl_ran_flat(rng, minU, maxU) ;
+				sd[l] = sqrt(g[l+C]*(1-g[l+C])/((double) n[k])) ;
+			}
 			tmp1 = g[0+C]*g[1+C]/((1-g[0+C])*(1-g[1+C])) ;
 			c2[0] = -sqrt(tmp1) ;
 			c2[1] = sqrt(1-tmp1) ;
