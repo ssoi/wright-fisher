@@ -50,29 +50,36 @@ wf_sim <- function(par) {
 	return(list(D1=sim[1,], D2=sim[2,], A1=sim[3,]))
 }
 
+psv_sim <- function(par) {
+	par$Ne <- as.integer(round(par$Ne))
+	mat <- mclapply(rec, function(r)
+		simplify2array(psv_2loc_2pop(T=t, B=b, N=n, R=r, A=a, M=0.01)))
+	d1 <- mclapply(mat, function(r) 
+		mean(apply(r, 2, function(x) x[1]*x[4]-x[2]*x[3])))
+	d2 <- mclapply(mat, function(r) 
+		mean(apply(r, 2, function(x) x[5]*x[8]-x[6]*x[7])))
+	a1 <- mclapply(mat, function(r) {
+		d <- apply(r, 2, function(x) x[1]*x[4]-x[2]*x[3])
+		f1 <- apply(r, 2, function(x) x[1]+x[2]-x[5]-x[6])
+		f2 <- apply(r, 2, function(x) x[1]+x[3]-x[5]-x[7])
+		mean(d*f1*f2)
+	})
+	a2 <- mclapply(mat, function(r) {
+		d <- apply(r, 2, function(x) x[5]*x[8]-x[6]*x[7])
+		f1 <- apply(r, 2, function(x) x[1]+x[2]-x[5]-x[6])
+		f2 <- apply(r, 2, function(x) x[1]+x[3]-x[5]-x[7])
+		mean(d*f1*f2)
+	})
+	return(list(D1=sim[1,], D2=sim[2,], A1=sim[3,]))
+}
+
 t <- c(400L, 500L)
 b <- 100L
 m <- 0.001
 n <- c(1000L, 10000L)
 rec <- seq(1e-5, 1e-2, length=50)
 a <- c(4.0, 1.0, 1.0, 4.0)
-system.time( res1 <- mclapply(rec, function(r) 
-	simplify2array(wf_2loc_1pop(T=t[2], B=b, N=n[1], R=r, A=a))) )
-system.time( res2 <- mclapply(rec, function(r) 
-	simplify2array(psv_2loc_1pop(T=t[2], B=b, N=n[1], R=r, A=a))) )
-system.time( res3 <- mclapply(rec, function(r) 
-	simplify2array(psv_2loc_2pop(T=t, B=b, N=n, R=r, A=a, M=0.01))) )
 d1 <- sapply(res1, function(r) 
 	mean(apply(r, 2, function(x) x[1]*x[4]-x[2]*x[3])))
 d2 <- sapply(res2, function(r) 
 	mean(apply(r, 2, function(x) x[1]*x[4]-x[2]*x[3])))
-d3.1 <- sapply(res3, function(r) 
-	mean(apply(r, 2, function(x) x[1]*x[4]-x[2]*x[3])))
-d3.2 <- sapply(res3, function(r) 
-	mean(apply(r, 2, function(x) x[5]*x[8]-x[6]*x[7])))
-alder <- sapply(res3, function(r) {
-	d <- apply(r, 2, function(x) x[1]*x[4]-x[2]*x[3])
-	f1 <- apply(r, 2, function(x) x[1]+x[2]-x[5]-x[6])
-	f2 <- apply(r, 2, function(x) x[1]+x[3]-x[5]-x[7])
-	mean(d*f1*f2)
-})
