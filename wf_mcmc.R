@@ -15,16 +15,13 @@ auxillary <- function(y, x) {
 # propose new parameters for Metropolis-Hastings
 wf_mh_propose <- function(param, cntl) {
 	proposal <- param
-	if(cntl$currIter %% 4 == 1) {
-		proposal$M1 <- rtmvnorm(n=1, mean=param$M1, sigma=cntl$sigma2.M,
+	if(cntl$currIter %% 3 == 0) {
+		proposal$M <- rtmvnorm(n=1, mean=param$M, sigma=cntl$sigma2.M,
 			upper=1, lower=0)
-	} else if(cntl$currIter %% 4 == 2) {
-		proposal$M2 <- rtmvnorm(n=1, mean=param$M2, sigma=cntl$sigma2.M,
-			upper=1, lower=0)
-	} else if(cntl$currIter %% 4 == 3) {
-		proposal$Ne1 <- rtmvnorm(n=1, mean=param$Ne1, sigma=cntl$sigma2.Ne, 
+	} else if(cntl$currIter %% 3 == 1) {
+		proposal$Ne1 <- rtmvnorm(n=1, mean=param$Ne1, sigma=cntl$sigma2.Ne,
 			upper=1e5, lower=1e2)
-	} else if(cntl$currIter %% 4 == 0) {
+	} else if(cntl$currIter %% 3 == 2) {
 		proposal$Ne2 <- rtmvnorm(n=1, mean=param$Ne2, sigma=cntl$sigma2.Ne, 
 			upper=1e5, lower=1e2)
 	}
@@ -33,29 +30,26 @@ wf_mh_propose <- function(param, cntl) {
 
 # Metropolis-Hastings ABC/BIL step
 wf_mh_step <- function(obs, curr, prev, cntl, init=F) {
-	t <- c(1L, curr$Tmig, curr$Tdiv)
+	t <- c(curr$Tmig, curr$Tdiv)
 	b <- cntl$B
-	ne <- c(curr$Ne1, curr$Ne1, curr$Ne2) 
-	m <- c(curr$M1, curr$M2)
+	ne <- c(curr$Ne1, curr$Ne2) 
+	m <- curr$M
 	a <- c(curr$alpha1, curr$alpha2, curr$alpha3, curr$alpha4)
 	# simulate data with proposed parameters
-	sim <- wf_sim(par=list(T=t, B=b, Ne=ne, A=a, M=m))
+	sim <- psv_sim(par=list(T=t, B=b, Ne=ne, A=a, M=m))
 	# fit curve and calculate likelihood based on multivariate normal
-	mu <- colSums(simplify2array(sim) - obs$aux)
+	mu <- colSums(matrix(nrow=nrow(obs$aux), ncol=ncol(obs$aux), data=sim) - obs$aux)
 	curr$loglik <- dmvnorm(x=mu, sigma=obs$sigma, log=T)
 	#	calculate appropriate transition densities
-	if(cntl$currIter %% 4 == 1) {
-		q01 <- log(dtnorm(x=curr$M1, mean=prev$M1, sd=cntl$sigma.M, a=0, b=1))
-		q10 <- log(dtnorm(x=prev$M1, mean=curr$M1, sd=cntl$sigma.M, a=0, b=1))
-	} else if(cntl$currIter %% 4 == 2) {
-		q01 <- log(dtnorm(x=curr$M2, mean=prev$M2, sd=cntl$sigma.M, a=0, b=1))
-		q10 <- log(dtnorm(x=prev$M2, mean=curr$M2, sd=cntl$sigma.M, a=0, b=1))
-	} else if(cntl$currIter %% 4 == 3) {	
+	if(cntl$currIter %% 3 == 1) {
+		q01 <- log(dtnorm(x=curr$M, mean=prev$M, sd=cntl$sigma.M, a=0, b=1))
+		q10 <- log(dtnorm(x=prev$M, mean=curr$M, sd=cntl$sigma.M, a=0, b=1))
+	} else if(cntl$currIter %% 3 == 2) {
 		q01 <- log(dtnorm(x=curr$Ne1, mean=prev$Ne1, sd=cntl$sigma.Ne, a=1e2, b=1e5))
 		q10 <- log(dtnorm(x=prev$Ne1, mean=curr$Ne1, sd=cntl$sigma.Ne, a=1e2, b=1e5))	
-	} else if(cntl$currIter %% 4 == 0) {	
+	} else if(cntl$currIter %% 3 == 3) {	
 		q01 <- log(dtnorm(x=curr$Ne2, mean=prev$Ne2, sd=cntl$sigma.Ne, a=1e2, b=1e5))
-		q10 <- log(dtnorm(x=prev$Ne2, mean=curr$Ne2, sd=cntl$sigma.Ne, a=1e2, b=1e5))
+		q10 <- log(dtnorm(x=prev$Ne2, mean=curr$Ne2, sd=cntl$sigma.Ne, a=1e2, b=1e5))	
 	}
 	if(init) return(curr)
 	alpha <- min(0, curr$loglik + q10 - prev$loglik - q01)
@@ -68,7 +62,7 @@ wf_mh_step <- function(obs, curr, prev, cntl, init=F) {
 
 # generate "pseudo-observed dataset" and fit auxillary model
 # alternatively read in data set (future)
-rec <- seq(1e-5, 1e-2, length=50)
+rec <- seq(1e-5, 1e-2, length=30)
 pod <- wf_sim(par=list(T=c(1L, 300L, 400L), B=50L, Ne=c(1e4L, 1e4L, 3e3L), 
 	A=c(0.5, 0.1, 0.1, 0.5), M=c(0.01, 0.0)))
 aux <- lapply(pod, auxillary, x=rec)
@@ -93,8 +87,7 @@ cntl$acc <- numeric(cntl$numIters-1) # store acceptance rate
 param <- data.frame(
 	Ne1=rep(NA, cntl$numIters), 
 	Ne2=rep(NA, cntl$numIters), 
-	M1=rep(NA, cntl$numIters), 
-	M2=rep(NA, cntl$numIters), 
+	M=rep(NA, cntl$numIters), 
 	alpha1=rep(NA, cntl$numIters), 
 	alpha2=rep(NA, cntl$numIters), 
 	alpha3=rep(NA, cntl$numIters), 
@@ -105,9 +98,9 @@ param <- data.frame(
 )
 
 # initialize MCMC chain
-param$Ne1[1] <- 1e3L
-param$Ne2[1] <- 1e3L
-param$M1[1] <- param$M2[1] <- 0
+param$Ne1[1] <- 5e3L
+param$Ne2[1] <- 5e3L
+param$M <- 0
 param$alpha1[1] <- param$alpha4[1] <- 0.5 
 param$alpha2[1] <- param$alpha3[1] <- 0.1 
 param$Tmig[1] <- 300L 

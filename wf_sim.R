@@ -41,19 +41,20 @@ wf_sim <- function(par) {
 		mat <- matrix(ncol=8, nrow=length(s), data=unlist(s), byrow=TRUE)
 		d1 <- mat[,1]*mat[,4] - mat[,2]*mat[,3] # LD in pop 1
 		d2 <- mat[,5]*mat[,8] - mat[,6]*mat[,7] # LD in pop 2
-		delta <- (mat[,5]+mat[,6]-mat[,1]-mat[,2]) * 
-			(mat[,7]+mat[,8]-mat[,3]-mat[,4]) 
+		delta <- (mat[,1]+mat[,2]-mat[,5]-mat[,6]) * 
+			(mat[,1]+mat[,3]-mat[,5]-mat[,7]) 
 		a1 <- d1*delta
 		a2 <- d2*delta
 		colMeans(cbind(d1, d2, a1, a2))
 	})
-	return(list(D1=sim[1,], D2=sim[2,], A1=sim[3,]))
+	return(list(D1=sim[1,], D2=sim[2,], A1=sim[3,], A2=sim[4,]))
 }
 
 psv_sim <- function(par) {
 	par$Ne <- as.integer(round(par$Ne))
 	mat <- mclapply(rec, function(r)
-		simplify2array(psv_2loc_2pop(T=t, B=b, N=n, R=r, A=a, M=0.01)))
+		simplify2array(psv_2loc_2pop(T=par$T, B=par$B, N=par$N, R=r, A=par$A,
+			M=par$M)))
 	d1 <- mclapply(mat, function(r) 
 		mean(apply(r, 2, function(x) x[1]*x[4]-x[2]*x[3])))
 	d2 <- mclapply(mat, function(r) 
@@ -70,16 +71,5 @@ psv_sim <- function(par) {
 		f2 <- apply(r, 2, function(x) x[1]+x[3]-x[5]-x[7])
 		mean(d*f1*f2)
 	})
-	return(list(D1=sim[1,], D2=sim[2,], A1=sim[3,]))
+	return(list(D1=d1, D2=d2, A1=a1, A2=a2))
 }
-
-t <- c(400L, 500L)
-b <- 100L
-m <- 0.001
-n <- c(1000L, 10000L)
-rec <- seq(1e-5, 1e-2, length=50)
-a <- c(4.0, 1.0, 1.0, 4.0)
-d1 <- sapply(res1, function(r) 
-	mean(apply(r, 2, function(x) x[1]*x[4]-x[2]*x[3])))
-d2 <- sapply(res2, function(r) 
-	mean(apply(r, 2, function(x) x[1]*x[4]-x[2]*x[3])))
