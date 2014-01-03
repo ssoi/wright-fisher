@@ -15,15 +15,21 @@ auxillary <- function(y, x) {
 # propose new parameters for Metropolis-Hastings
 wf_mh_propose <- function(param, cntl) {
 	proposal <- param
-	if(cntl$currIter %% 3 == 0) {
+	mod <- cntl$currIter %% cntl$P
+	if(mod == 0) {
 		proposal$M <- rtmvnorm(n=1, mean=param$M, sigma=cntl$sigma2.M,
 			upper=1, lower=0)
-	} else if(cntl$currIter %% 3 == 1) {
+	} else if(mod == 1) {
 		proposal$Ne1 <- rtmvnorm(n=1, mean=param$Ne1, sigma=cntl$sigma2.Ne,
 			upper=1e5, lower=1e2)
-	} else if(cntl$currIter %% 3 == 2) {
+	} else if(mod == 2) {
 		proposal$Ne2 <- rtmvnorm(n=1, mean=param$Ne2, sigma=cntl$sigma2.Ne, 
-			upper=1e5, lower=1e2)
+			upper=1e5, lower=1e2)	
+	} else if(mod == 3) {
+		proposal$Tdiv <- rtmvnorm(n=1, mean=param$Tdiv, sigma=cntl$sigma2.Tdiv, 
+			upper=Inf, lower=1e1)	
+		proposal$Tmig <- rtmvnorm(n=1, mean=param$Tmig, sigma=cntl$sigma2.Tmig, 
+			upper=param$Tdiv-1, lower=1)	
 	}
 	return(proposal)
 }
@@ -38,18 +44,25 @@ wf_mh_step <- function(obs, curr, prev, cntl, init=F) {
 	# simulate data with proposed parameters
 	sim <- psv_sim(par=list(T=t, B=b, Ne=ne, A=a, M=m))
 	# fit curve and calculate likelihood based on multivariate normal
-	mu <- colSums(matrix(nrow=nrow(obs$aux), ncol=ncol(obs$aux), data=sim) - obs$aux)
+	mu <- colSums(matrix(nrow=nrow(obs$aux), ncol=ncol(obs$aux), data=unlist(sim))
+		- obs$aux)
 	curr$loglik <- dmvnorm(x=mu, sigma=obs$sigma, log=T)
 	#	calculate appropriate transition densities
-	if(cntl$currIter %% 3 == 1) {
+	mod <- cntl$currIter %% cntl$P
+	if(mod == 0) {
 		q01 <- log(dtnorm(x=curr$M, mean=prev$M, sd=cntl$sigma.M, a=0, b=1))
 		q10 <- log(dtnorm(x=prev$M, mean=curr$M, sd=cntl$sigma.M, a=0, b=1))
-	} else if(cntl$currIter %% 3 == 2) {
+	} else if(mod == 1) {
 		q01 <- log(dtnorm(x=curr$Ne1, mean=prev$Ne1, sd=cntl$sigma.Ne, a=1e2, b=1e5))
 		q10 <- log(dtnorm(x=prev$Ne1, mean=curr$Ne1, sd=cntl$sigma.Ne, a=1e2, b=1e5))	
-	} else if(cntl$currIter %% 3 == 3) {	
+	} else if(mod == 2) {	
 		q01 <- log(dtnorm(x=curr$Ne2, mean=prev$Ne2, sd=cntl$sigma.Ne, a=1e2, b=1e5))
 		q10 <- log(dtnorm(x=prev$Ne2, mean=curr$Ne2, sd=cntl$sigma.Ne, a=1e2, b=1e5))	
+	} else if(mod == 3) {	
+		q01 <- log(dtnorm(x=curr$Tdiv, mean=prev$Tdiv, sd=cntl$sigma.Tdiv, a=1e1, b=Inf))
+		q01 <- q01 + log(dtnorm(x=curr$Tmig, mean=prev$Tmig, sd=cntl$sigma.Tmig, a=1, b=prev$Tmig-1))
+		q10 <- log(dtnorm(x=prev$Tdiv, mean=curr$Tdiv, sd=cntl$sigma.Tdiv, a=1e1, b=Inf))	
+		q10 <- q10 + log(dtnorm(x=prev$Tmig, mean=curr$Tmig, sd=cntl$sigma.Tmig, a=1, b=curr$Tmig-1))	
 	}
 	if(init) return(curr)
 	alpha <- min(0, curr$loglik + q10 - prev$loglik - q01)
@@ -63,23 +76,27 @@ wf_mh_step <- function(obs, curr, prev, cntl, init=F) {
 # generate "pseudo-observed dataset" and fit auxillary model
 # alternatively read in data set (future)
 rec <- seq(1e-5, 1e-2, length=30)
-pod <- wf_sim(par=list(T=c(1L, 300L, 400L), B=50L, Ne=c(1e4L, 1e4L, 3e3L), 
-	A=c(0.5, 0.1, 0.1, 0.5), M=c(0.01, 0.0)))
+pod <- psv_sim(par=list(T=c(300L, 400L), B=50L, Ne=c(1e4L, 3e3L), 
+	A=c(0.5, 0.1, 0.1, 0.5), M=0.01))
+pod <- lapply(pod, as.numeric)
 aux <- lapply(pod, auxillary, x=rec)
 pod$aux <- simplify2array(sapply(aux, "[[", "Y"))
 pod$sigma <- cov(simplify2array(sapply(aux, "[[", "res")))
 
 # define control for control MCMC	
 cntl <- list() # proposal, log-likelihood, and other deets for MCMC
-cntl$numIters <- 1e4 # length of chain
-cntl$currIter <- 1 # current iteration of MCMC chain
-cntl$B <- 50L # number of replicates per simulation
+cntl$numIters <- 1e4
+cntl$currIter <- 1
+cntl$B <- 50 # number of parameters being sampled
+cntl$P <- 4 # number of parameters being sampled
 cntl$sigma.M <- 0.01 # variance for migration proposal
 cntl$sigma.Ne <- 4e3 # variance for migration proposal
 cntl$sigma2.M <- cntl$sigma.M^2 # variance for migration proposal
 cntl$sigma2.Ne <- cntl$sigma.Ne^2 # variance for migration proposal
-cntl$sigma.Tm <- 1 # variance for time of migration proposal
-cntl$sigma.Tdiv <- 1 # variance for time of divergence proposal
+cntl$sigma.Tmig <- 50 # variance for time of migration proposal
+cntl$sigma.Tdiv <- 50 # variance for time of divergence proposal
+cntl$sigma2.Tmig <- 2500 # variance for time of migration proposal
+cntl$sigma2.Tdiv <- 2500 # variance for time of divergence proposal
 cntl$acc <- numeric(cntl$numIters-1) # store acceptance rate
 
 # define parameters for posterior sampling 
@@ -103,8 +120,8 @@ param$Ne2[1] <- 5e3L
 param$M <- 0
 param$alpha1[1] <- param$alpha4[1] <- 0.5 
 param$alpha2[1] <- param$alpha3[1] <- 0.1 
-param$Tmig[1] <- 300L 
-param$Tdiv[1] <- 400L
+param$Tmig[1] <- 100L 
+param$Tdiv[1] <- 200L
 
 # calculate log-likelihood of initial state of chain
 param[1,] <- wf_mh_step(obs=pod, curr=param[1,], prev=param[1,], cntl=cntl, init=T)
@@ -124,6 +141,6 @@ for(iter in 2:cntl$numIters) {
 	}
 	cntl$acc[iter-1] <- mh$acc
 	#if(iter %% 10 < 4)
-		print(paste(iter, ":", paste(round(proposal[1:4],4), collapse=" "), "|", 
-			paste(round(param[iter,c(1:4, 11)],4), collapse=" ")))
+		print(paste(iter, ":", paste(round(proposal[c(1:3, 8:9)],4), collapse=" "), "|", 
+			paste(round(param[iter,c(1:3, 8:10)],4), collapse=" ")))
 }

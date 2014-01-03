@@ -34,6 +34,7 @@ psv_2loc_2pop <- cfunction(psv_2loc_2pop_sig, body=psv_2loc_2pop_src, Rcpp=TRUE,
 	libargs="-lgsl -lgslcblas")
 
 wf_sim <- function(par) {
+	par$T <- as.integer(round(par$T))
 	par$Ne <- as.integer(round(par$Ne))
 	sim <- sapply(rec, function(r) {
 		s <- wf_2loc_2pop(T=par$T, B=par$B, N=par$Ne, R=r, A=par$A, 
@@ -51,19 +52,20 @@ wf_sim <- function(par) {
 }
 
 psv_sim <- function(par) {
+	par$T <- as.integer(round(par$T))
 	par$Ne <- as.integer(round(par$Ne))
 	mat <- mclapply(rec, function(r)
 		simplify2array(psv_2loc_2pop(T=par$T, B=par$B, N=par$N, R=r, A=par$A,
 			M=par$M)))
 	d1 <- mclapply(mat, function(r) 
-		mean(apply(r, 2, function(x) x[1]*x[4]-x[2]*x[3])))
+		(apply(r, 2, function(x) x[1]*x[4]-x[2]*x[3])))
 	d2 <- mclapply(mat, function(r) 
 		mean(apply(r, 2, function(x) x[5]*x[8]-x[6]*x[7])))
 	a1 <- mclapply(mat, function(r) {
 		d <- apply(r, 2, function(x) x[1]*x[4]-x[2]*x[3])
 		f1 <- apply(r, 2, function(x) x[1]+x[2]-x[5]-x[6])
 		f2 <- apply(r, 2, function(x) x[1]+x[3]-x[5]-x[7])
-		mean(d*f1*f2)
+		d*f1*f2
 	})
 	a2 <- mclapply(mat, function(r) {
 		d <- apply(r, 2, function(x) x[5]*x[8]-x[6]*x[7])
