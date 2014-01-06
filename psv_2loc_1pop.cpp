@@ -10,6 +10,7 @@ using std::cout ;
 using std::endl ;
 using std::vector ;
 
+bool ISNAN ;
 unsigned int  i = 0, j = 0, k = 0, l = 0, 
 b = as<unsigned int>(B), // # of 2-locus pairs
 t = as<unsigned int>(T), // # of generations
@@ -42,19 +43,12 @@ for(i = 0; i < b ; i++) {
 	res[i].resize(4) ;
 	gsl_ran_dirichlet(rng, 4, alpha, g) ;
 	for(j = 0; j < t; j++) {
-		d = (g[0] * g[3]) - (g[1] * g[2]) ; // LD
-		if(isnan(d)) {
-			cout << i << " " ;
-			for(l = 0 ; l < 4 ; l++) cout << g[l] << " " ;
-			cout << "| " ;
-			for(l = 0 ; l < 4 ; l++) cout << res[i-1][l] << " " ;
-			cout << endl ;
-		}
+		d = (g[0] * g[3]) - (g[1] * g[2]) ; // LD 
 		g[0] -= r*d ;
 		g[1] += r*d ;
 		g[2] += r*d ;
 		g[3] -= r*d ;
-		for(k = 0 ; k < 3 ; k++) g[k] = g[k] > 0 ? g[k] : 0 ;
+		for(k = 0 ; k < 3 ; k++) g[k] = g[k] > 0 ? g[k] : 1/((double) n) ;
 		for(k = 0 ; k < 3 ; k++) u[k] = gsl_ran_flat(rng, minU, maxU) ;
 		for(k = 0 ; k < 4 ; k++) sd[k] = sqrt(g[k]*(1-g[k])/((double) n)) ;
 		tmp1 = g[0]*g[1]/((1-g[0])*(1-g[1])) ;
@@ -72,6 +66,10 @@ for(i = 0; i < b ; i++) {
 		for(tot=0.0, k = 0 ; k < 3 ; k++) {
 			g[k] += eta[k] ;
 			tot += g[k] ;
+			if(isnan(g[k])) {
+				cout << i << " " << tmp1 << " " << tmp2 << " " << tmp3 << " | " << 
+					c2[0] << " " << c2[1] << " | " << c3[0] << " " << c3[1] << " " << c3[2] << endl ;
+			}
 		}
 		g[3] = 1 - tot ;
 	}
