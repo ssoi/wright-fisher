@@ -6,9 +6,11 @@
  *****************************************************************/
 
 using namespace Rcpp ;
+using std::cout ;
+using std::endl ;
 using std::vector ;
 
-unsigned int  i = 0, j = 0, k = 0,
+unsigned int  i = 0, j = 0, k = 0, l = 0, 
 b = as<unsigned int>(B), // # of 2-locus pairs
 t = as<unsigned int>(T), // # of generations
 n = as<unsigned int>(N) ; // effective pop. size
@@ -41,6 +43,13 @@ for(i = 0; i < b ; i++) {
 	gsl_ran_dirichlet(rng, 4, alpha, g) ;
 	for(j = 0; j < t; j++) {
 		d = (g[0] * g[3]) - (g[1] * g[2]) ; // LD
+		if(isnan(d)) {
+			cout << i << " " ;
+			for(l = 0 ; l < 4 ; l++) cout << g[l] << " " ;
+			cout << "| " ;
+			for(l = 0 ; l < 4 ; l++) cout << res[i-1][l] << " " ;
+			cout << endl ;
+		}
 		g[0] -= r*d ;
 		g[1] += r*d ;
 		g[2] += r*d ;

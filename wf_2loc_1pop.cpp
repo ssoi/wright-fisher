@@ -37,10 +37,11 @@ rng = gsl_rng_alloc(rngType) ;
 for(i = 0 ; i < 4 ; i++) alpha[i] = a[i] ;
 res.resize(b) ;
 for(i = 0; i < b ; i++) {
-	res[i].resize(4) ;
+	// res[i].resize(4) ;
+	res[i].resize(t) ;
 	gsl_ran_dirichlet(rng, 4, alpha, g) ;
 	for(j = 0; j < t; j++) {
-		d = (g[0] * g[3]) - (g[1] * g[2]) ; // LD
+		res[i][j] = d = (g[0] * g[3]) - (g[1] * g[2]) ; // LD
 		// mutation and recombination
 		prob[0] = g[0] - r*d ;
 		prob[1] = g[1] + r*d ;
@@ -51,7 +52,7 @@ for(i = 0; i < b ; i++) {
 		for(k = 0 ; k < 4 ; k++) g[k] = ((double)H[k])/n ;
 	}
 	// load results 
-	for(j = 0 ; j < 4 ; j++) res[i][j] = g[j] ;
+	// for(j = 0 ; j < 4 ; j++) res[i][j] = g[j] ;
 }
 
 // clean up memory
