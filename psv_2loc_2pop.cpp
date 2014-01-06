@@ -31,7 +31,6 @@ vector<unsigned int> n = as< vector<unsigned int> >(N),
 vector<double> a = as< vector<double> >(A) ; 
 vector< vector<double> > res ; // 2d vector returned to R
 
-
 // Set up GSL RNG
 gsl_rng_env_setup() ;
 gsl_rng * rng ;

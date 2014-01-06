@@ -8,7 +8,6 @@
 using namespace Rcpp ;
 using std::vector ;
 
-// [[Rcpp::export]]
 unsigned int  i = 0, j = 0, k = 0,
 b = as<unsigned int>(B), // # of 2-locus pairs
 t = as<unsigned int>(T), // # of generations
