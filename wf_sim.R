@@ -5,15 +5,6 @@ library(inline)
 wf_2loc_1pop_src <- paste(readLines("wf_2loc_1pop.cpp"), collapse="\n")
 wf_2loc_1pop_sig <- signature(T="integer", B="integer", N="integer",
 	R="numeric", A="numeric")
-wf_2loc_1pop <- cfunction(wf_2loc_1pop_sig, body=wf_2loc_1pop_src, Rcpp=TRUE, 
-	includes=c("#include <gsl/gsl_randist.h>", "#include <gsl/gsl_rng.h>"), 
-	libargs="-lgsl -lgslcblas")
-
-# load C++ source code for WF simulation of 2 loci in 2 pop w/ migration
-wf_2loc_2pop_src <- paste(readLines("wf_2loc_2pop.cpp"), collapse="\n")
-wf_2loc_2pop_sig <- signature(T="integer", B="integer", N="integer", R="numeric", 
-	A="numeric",  M="numeric")
-wf_2loc_2pop <- cfunction(wf_2loc_2pop_sig, body=wf_2loc_2pop_src, Rcpp=TRUE, 
 	includes=c("#include <gsl/gsl_randist.h>", "#include <gsl/gsl_rng.h>"), 
 	libargs="-lgsl -lgslcblas")
 
@@ -51,7 +42,6 @@ wf_sim <- function(par) {
 	})
 	return(list(D1=sim[1,], D2=sim[2,], A1=sim[3,], A2=sim[4,]))
 }
-
 
 psv_sim <- function(par) {
 	par$T <- as.integer(round(par$T))

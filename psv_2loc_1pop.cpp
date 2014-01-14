@@ -10,14 +10,16 @@ using std::cout ;
 using std::endl ;
 using std::vector ;
 
-bool ISNAN ;
+bool DOMULTI = false ;
 unsigned int  i = 0, j = 0, k = 0, l = 0, 
 b = as<unsigned int>(B), // # of 2-locus pairs
 t = as<unsigned int>(T), // # of generations
-n = as<unsigned int>(N) ; // effective pop. size
-double p = 0.0, q = 0.0, d = 0.0, 
+n = as<unsigned int>(N),
+*H = new unsigned int[4] ; // effective pop. size
+double p = 0.0, q = 0.0, d = 0.0, dn = (double) n, 
 	maxU=sqrt(3.0), minU=-sqrt(3.0),
-	tot, tmp1, tmp2, tmp3, 
+	tot, tmp1, rho12, rho13, rho23, 
+	c21, c22, c31, c32, c33, 
 	r = as<double>(R), // recombination rate
 	*g = new double[4],  // allele frequencies
 	*alpha = new double[4], // Dirichlet parameters
@@ -48,34 +50,38 @@ for(i = 0; i < b ; i++) {
 		g[1] += r*d ;
 		g[2] += r*d ;
 		g[3] -= r*d ;
-		for(k = 0 ; k < 3 ; k++) g[k] = g[k] > 0 ? g[k] : 1/((double) n) ;
 		for(k = 0 ; k < 3 ; k++) u[k] = gsl_ran_flat(rng, minU, maxU) ;
-		for(k = 0 ; k < 4 ; k++) sd[k] = sqrt(g[k]*(1-g[k])/((double) n)) ;
-		tmp1 = g[0]*g[1]/((1-g[0])*(1-g[1])) ;
-		c2[0] = -sqrt(tmp1) ;
-		c2[1] = sqrt(1-tmp1) ;
-		tmp1 = g[0]*g[2]/((1-g[0])*(1-g[2])) ;
-		tmp2 = g[1]*g[2]/((1-g[1])*(1-g[2])) ;
-		tmp3 = 1-g[0] ;
-		c3[0] = -sqrt(tmp1) ;
-		c3[1] = -sqrt(tmp2)/tmp3 ;  
-		c3[2] = sqrt(1 - tmp1 - tmp2/(tmp3*tmp3)) ;
+		for(k = 0 ; k < 4 ; k++) sd[k] = sqrt(g[k]*(1-g[k])/dn) ;
+		rho12 = (g[0]*g[1])/((1-g[0])*(1-g[1])) ;
+		rho13 = (g[0]*g[2])/((1-g[0])*(1-g[2])) ;
+		rho23 = (g[1]*g[2])/((1-g[1])*(1-g[2])) ;
+		c21 = -sqrt(rho12) ;
+		c22 = sqrt(1 - rho12) ;
+		c31 = -sqrt(rho13) ;
+		c32 = (-sqrt(rho23) - sqrt(rho12*rho13))/c22 ;
+		c33 = sqrt(1 - (c31*c31) - (c32*c32)) ;
 		eta[0] = sd[0] * u[0] ;
-		eta[1] = sd[1] * (c2[0] * u[0] + c2[1]*u[1]) ;
-		eta[2] = sd[2] * (c3[0] * u[0] + c3[1]*u[1] + c3[2]*u[2]) ;
+		eta[1] = sd[1] * (c21 * u[0] + c22*u[1]) ;
+		eta[2] = sd[2] * (c31 * u[0] + c32*u[1] + c33*u[2]) ;
 		for(tot=0.0, k = 0 ; k < 3 ; k++) {
-			g[k] += eta[k] ;
-			tot += g[k] ;
-			if(isnan(g[k])) {
-				cout << i << " " << tmp1 << " " << tmp2 << " " << tmp3 << " | " << 
-					c2[0] << " " << c2[1] << " | " << c3[0] << " " << c3[1] << " " << c3[2] << endl ;
-			}
+			tot += (g[k]+eta[k]) ;
+			if(g[k] + eta[k] < 0) DOMULTI = true ;
 		}
-		g[3] = 1 - tot ;
+		if(1 - tot < 0 ) DOMULTI = true ;
+		// if((isnan(c21) || isnan(c22) || isnan(c31) || isnan(c32) || isnan(c33)) || 
+		//	 isnan(g[0]) || isnan(g[1]) || isnan(g[2]) || isnan(g[3])) {
+		// }
+		if(!DOMULTI) {
+			for(k = 0 ; k < 3 ; k++) g[k] += eta[k] ;
+			g[3] = 1 - tot ;
+		} else {
+			gsl_ran_multinomial(rng, 4, dn, g, H) ;
+			for(k = 0 ; k < 3 ; k++) g[k] = H[k]/((double) n) ;
+		}
+		DOMULTI = false ;
 	}
 	// load results 
 	for(j = 0 ; j < 4 ; j++) res[i][j] = g[j] ;
-	// g[j] = buff[j] ;	
 }
 
 // clean up memory
