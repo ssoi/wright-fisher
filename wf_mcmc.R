@@ -42,10 +42,9 @@ wf_mh_step <- function(obs, curr, prev, cntl, init=F) {
 	m <- curr$M
 	a <- c(curr$alpha1, curr$alpha2, curr$alpha3, curr$alpha4)
 	# simulate data with proposed parameters
-	sim <- psv_sim(par=list(T=t, B=b, Ne=ne, A=a, M=m))
+	sim <- sapply(psv_sim(par=list(T=t, B=b, Ne=ne, A=a, M=m)), unlist)
 	# fit curve and calculate likelihood based on multivariate normal
-	mu <- colSums(matrix(nrow=nrow(obs$aux), ncol=ncol(obs$aux), data=unlist(sim))
-		- obs$aux)
+	mu <- colSums(sim	- obs$aux)
 	curr$loglik <- dmvnorm(x=mu, sigma=obs$sigma, log=T)
 	#	calculate appropriate transition densities
 	mod <- cntl$currIter %% cntl$P
@@ -73,21 +72,11 @@ wf_mh_step <- function(obs, curr, prev, cntl, init=F) {
 	}
 }
 
-# generate "pseudo-observed dataset" and fit auxillary model
-# alternatively read in data set (future)
-rec <- seq(1e-5, 1e-2, length=30)
-pod <- psv_sim(par=list(T=c(300L, 400L), B=50L, Ne=c(1e4L, 3e3L), 
-	A=c(0.5, 0.1, 0.1, 0.5), M=0.01))
-pod <- lapply(pod, as.numeric)
-aux <- lapply(pod, auxillary, x=rec)
-pod$aux <- simplify2array(sapply(aux, "[[", "Y"))
-pod$sigma <- cov(simplify2array(sapply(aux, "[[", "res")))
-
 # define control for control MCMC	
 cntl <- list() # proposal, log-likelihood, and other deets for MCMC
-cntl$numIters <- 1e4
+cntl$numIters <- 1e4L
 cntl$currIter <- 1
-cntl$B <- 50 # number of parameters being sampled
+cntl$B <- 100L # number of parameters being sampled
 cntl$P <- 4 # number of parameters being sampled
 cntl$sigma.M <- 0.01 # variance for migration proposal
 cntl$sigma.Ne <- 4e3 # variance for migration proposal
@@ -100,7 +89,6 @@ cntl$sigma2.Tdiv <- 2500 # variance for time of divergence proposal
 cntl$acc <- numeric(cntl$numIters-1) # store acceptance rate
 
 # define parameters for posterior sampling 
-
 param <- data.frame(
 	Ne1=rep(NA, cntl$numIters), 
 	Ne2=rep(NA, cntl$numIters), 
@@ -123,6 +111,16 @@ param$alpha2[1] <- param$alpha3[1] <- 0.1
 param$Tmig[1] <- 100L 
 param$Tdiv[1] <- 200L
 
+# generate "pseudo-observed dataset" and fit auxillary model
+# alternatively read in data set (future)
+rec <- seq(1e-5, 1e-2, length=30)
+pod <- psv_sim(par=list(T=c(300L, 400L), B=cntl$B, Ne=c(1e4L, 3e3L), 
+	A=c(0.5, 0.1, 0.1, 0.5), M=0.01))
+pod <- lapply(pod, unlist)
+aux <- lapply(pod, auxillary, x=rec)
+pod$aux <- simplify2array(lapply(aux, "[[", "Y"))
+pod$sigma <- cov(simplify2array(lapply(aux, "[[", "res")))
+
 # calculate log-likelihood of initial state of chain
 param[1,] <- wf_mh_step(obs=pod, curr=param[1,], prev=param[1,], cntl=cntl, init=T)
 
@@ -132,7 +130,12 @@ for(iter in 2:cntl$numIters) {
 	repeat {
 		proposal <- wf_mh_propose(param[iter-1,], cntl)
 		mh <- try(wf_mh_step(obs=pod, curr=proposal, prev=param[iter-1,], cntl=cntl))
-		if(class(mh) != "try-error") break
+		if(class(mh) != "try-error") {
+			break
+		} else {
+			print(proposal)
+			shit <- proposal
+		}
 	}	
 	if(mh$acc) {
 		param[iter,] <- mh$param
@@ -140,7 +143,8 @@ for(iter in 2:cntl$numIters) {
 		param[iter,] <- param[iter-1,] 
 	}
 	cntl$acc[iter-1] <- mh$acc
-	#if(iter %% 10 < 4)
+	if(iter %% 60 == 0) {
 		print(paste(iter, ":", paste(round(proposal[c(1:3, 8:9)],4), collapse=" "), "|", 
 			paste(round(param[iter,c(1:3, 8:10)],4), collapse=" ")))
+	}
 }

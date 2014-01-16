@@ -44,26 +44,26 @@ wf_sim <- function(par) {
 }
 
 psv_sim <- function(par) {
-	par$T <- as.integer(round(par$T))
+	par$T <- as.integer(round(par$Tdiv))
 	par$Ne <- as.integer(round(par$Ne))
 	mat <- mclapply(rec, function(r)
 		simplify2array(psv_2loc_2pop(T=par$T, B=par$B, N=par$N, R=r, A=par$A,
 			M=par$M)))
 	d1 <- mclapply(mat, function(r) 
-		(apply(r, 2, function(x) x[1]*x[4]-x[2]*x[3])))
+		mean(apply(r, 2, function(x) x[1]*x[4]-x[2]*x[3]), na.rm=TRUE))
 	d2 <- mclapply(mat, function(r) 
-		mean(apply(r, 2, function(x) x[5]*x[8]-x[6]*x[7])))
+		mean(apply(r, 2, function(x) x[5]*x[8]-x[6]*x[7]), na.rm=TRUE))
 	a1 <- mclapply(mat, function(r) {
 		d <- apply(r, 2, function(x) x[1]*x[4]-x[2]*x[3])
 		f1 <- apply(r, 2, function(x) x[1]+x[2]-x[5]-x[6])
 		f2 <- apply(r, 2, function(x) x[1]+x[3]-x[5]-x[7])
-		d*f1*f2
+		mean(d*f1*f2, na.rm=TRUE)
 	})
 	a2 <- mclapply(mat, function(r) {
 		d <- apply(r, 2, function(x) x[5]*x[8]-x[6]*x[7])
 		f1 <- apply(r, 2, function(x) x[1]+x[2]-x[5]-x[6])
 		f2 <- apply(r, 2, function(x) x[1]+x[3]-x[5]-x[7])
-		mean(d*f1*f2)
+		mean(d*f1*f2, na.rm=TRUE)
 	})
 	return(list(D1=d1, D2=d2, A1=a1, A2=a2))
 }
