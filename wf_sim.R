@@ -18,8 +18,8 @@ psv_2loc_2pop <- cfunction(psv_2loc_2pop_sig, body=psv_2loc_2pop_src, Rcpp=TRUE,
 	libargs="-lgsl -lgslcblas")
 
 psv_sim <- function(par) {
-	par$T <- as.integer(round(par$Tdiv))
-	par$Ne <- as.integer(round(par$Ne))
+	par$T <- as.integer(round(par$T))
+	par$Ne <- as.integer(round(par$N))
 	mat <- mclapply(rec, function(r)
 		simplify2array(psv_2loc_2pop(T=par$T, B=par$B, N=par$N, R=r, A=par$A,
 			M=par$M)))

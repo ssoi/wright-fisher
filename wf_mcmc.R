@@ -27,9 +27,18 @@ wf_mh_propose <- function(param, cntl) {
 			upper=1e5, lower=1e2)	
 	} else if(mod == 3) {
 		proposal$Tdiv <- rtmvnorm(n=1, mean=param$Tdiv, sigma=cntl$sigma2.Tdiv, 
-			upper=Inf, lower=1e1)	
+			upper=Inf, lower=1e1)
+	} else if(mod == 4) {
 		proposal$Tmig <- rtmvnorm(n=1, mean=param$Tmig, sigma=cntl$sigma2.Tmig, 
 			upper=param$Tdiv-1, lower=1)	
+	} else if(mod == 5) {
+		alpha <- rtmvnorm(n=1, 
+			mean=c(proposal$alpha1, proposal$alpha2, proposal$alpha3, proposal$alpha4),
+			sigma=diag(4)*cntl$sigma2.alpha, lower=rep(0, 4))	
+		proposal$alpha1 <- alpha[1]
+		proposal$alpha2 <- alpha[2]
+		proposal$alpha3 <- alpha[3]
+		proposal$alpha4 <- alpha[4]
 	}
 	return(proposal)
 }
@@ -59,9 +68,15 @@ wf_mh_step <- function(obs, curr, prev, cntl, init=F) {
 		q10 <- log(dtnorm(x=prev$Ne2, mean=curr$Ne2, sd=cntl$sigma.Ne, a=1e2, b=1e5))	
 	} else if(mod == 3) {	
 		q01 <- log(dtnorm(x=curr$Tdiv, mean=prev$Tdiv, sd=cntl$sigma.Tdiv, a=1e1, b=Inf))
-		q01 <- q01 + log(dtnorm(x=curr$Tmig, mean=prev$Tmig, sd=cntl$sigma.Tmig, a=1, b=prev$Tmig-1))
 		q10 <- log(dtnorm(x=prev$Tdiv, mean=curr$Tdiv, sd=cntl$sigma.Tdiv, a=1e1, b=Inf))	
-		q10 <- q10 + log(dtnorm(x=prev$Tmig, mean=curr$Tmig, sd=cntl$sigma.Tmig, a=1, b=curr$Tmig-1))	
+	} else if(mod == 4) {	
+		q01 <- log(dtnorm(x=curr$Tmig, mean=prev$Tmig, sd=cntl$sigma.Tmig, a=1, b=prev$Tmig-1))
+		q10 <- log(dtnorm(x=prev$Tmig, mean=curr$Tmig, sd=cntl$sigma.Tmig, a=1, b=curr$Tmig-1))	
+	} else {
+		alpha.prev <- c(prev$alpha1, prev$alpha2, prev$alpha3, prev$alpha4)
+		alpha.curr <- c(curr$alpha1, curr$alpha2, curr$alpha3, curr$alpha4)
+		q01 <- log(dtnorm(x=alpha.curr, mean=alpha.prev, sd=cntl$sigma.alpha, a=0, b=Inf))
+		q10 <- log(dtnorm(x=alpha.prev, mean=alpha.curr, sd=cntl$sigma.alpha, a=0, b=Inf))
 	}
 	if(init) return(curr)
 	alpha <- min(0, curr$loglik + q10 - prev$loglik - q01)
@@ -74,11 +89,11 @@ wf_mh_step <- function(obs, curr, prev, cntl, init=F) {
 
 # define control for control MCMC	
 cntl <- list() # proposal, log-likelihood, and other deets for MCMC
-cntl$numIters <- 1e4L
+cntl$numIters <- 6e4L
 cntl$currIter <- 1
-cntl$B <- 100L # number of parameters being sampled
-cntl$P <- 4 # number of parameters being sampled
-cntl$sigma.M <- 0.01 # variance for migration proposal
+cntl$B <- 200L 
+cntl$P <- 6 # number of parameters being sampled
+cntl$sigma.M <- 0.001 # variance for migration proposal
 cntl$sigma.Ne <- 4e3 # variance for migration proposal
 cntl$sigma2.M <- cntl$sigma.M^2 # variance for migration proposal
 cntl$sigma2.Ne <- cntl$sigma.Ne^2 # variance for migration proposal
@@ -86,6 +101,8 @@ cntl$sigma.Tmig <- 50 # variance for time of migration proposal
 cntl$sigma.Tdiv <- 50 # variance for time of divergence proposal
 cntl$sigma2.Tmig <- 2500 # variance for time of migration proposal
 cntl$sigma2.Tdiv <- 2500 # variance for time of divergence proposal
+cntl$sigma.alpha <- 0.5 # variance for migration proposal
+cntl$sigma2.alpha <- cntl$sigma.alpha^2 # variance for migration proposal
 cntl$acc <- numeric(cntl$numIters-1) # store acceptance rate
 
 # define parameters for posterior sampling 
@@ -106,26 +123,27 @@ param <- data.frame(
 param$Ne1[1] <- 5e3L
 param$Ne2[1] <- 5e3L
 param$M <- 0
-param$alpha1[1] <- param$alpha4[1] <- 0.5 
-param$alpha2[1] <- param$alpha3[1] <- 0.1 
+param$alpha1[1] <- param$alpha4[1] <- 1.5
+param$alpha2[1] <- param$alpha3[1] <- 1
 param$Tmig[1] <- 100L 
 param$Tdiv[1] <- 200L
 
 # generate "pseudo-observed dataset" and fit auxillary model
 # alternatively read in data set (future)
-rec <- seq(1e-5, 1e-2, length=30)
-pod <- psv_sim(par=list(T=c(300L, 400L), B=cntl$B, Ne=c(1e4L, 3e3L), 
-	A=c(0.5, 0.1, 0.1, 0.5), M=0.01))
-pod <- lapply(pod, unlist)
-aux <- lapply(pod, auxillary, x=rec)
-pod$aux <- simplify2array(lapply(aux, "[[", "Y"))
-pod$sigma <- cov(simplify2array(lapply(aux, "[[", "res")))
+# rec <- seq(1e-5, 1e-2, length=30)
+# pod <- psv_sim(par=list(T=c(300L, 400L), B=cntl$B, Ne=c(1e4L, 3e3L), 
+#		A=c(0.5, 0.1, 0.1, 0.5), M=0.01))
+# pod <- lapply(pod, unlist)
+# aux <- lapply(pod, auxillary, x=rec)
+# pod$aux <- simplify2array(lapply(aux, "[[", "Y"))
+# pod$sigma <- cov(simplify2array(lapply(aux, "[[", "res")))
+load("pod.RData")
 
 # calculate log-likelihood of initial state of chain
 param[1,] <- wf_mh_step(obs=pod, curr=param[1,], prev=param[1,], cntl=cntl, init=T)
 
 # run chain
-for(iter in 2:cntl$numIters) {
+for(iter in 3672:cntl$numIters) {
 	cntl$currIter <- iter
 	repeat {
 		proposal <- wf_mh_propose(param[iter-1,], cntl)
@@ -143,8 +161,8 @@ for(iter in 2:cntl$numIters) {
 		param[iter,] <- param[iter-1,] 
 	}
 	cntl$acc[iter-1] <- mh$acc
-	if(iter %% 60 == 0) {
-		print(paste(iter, ":", paste(round(proposal[c(1:3, 8:9)],4), collapse=" "), "|", 
-			paste(round(param[iter,c(1:3, 8:10)],4), collapse=" ")))
-	}
+	# if(iter %% (cntl$P*2) == 0) {
+		print(paste(iter, ":", paste(round(proposal[-10],4), collapse=" "), "|", 
+			paste(round(param[iter,],4), collapse=" ")))
+	# }
 }
