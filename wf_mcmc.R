@@ -1,3 +1,4 @@
+library(multicore, quietly=TRUE)
 library(splines, quietly=TRUE)
 library(tmvtnorm, quietly=TRUE)
 source("wf_sim.R")
@@ -19,9 +20,9 @@ wf_mh_propose <- function(param, cntl) {
 	if(mod == 0) {
 		proposal$M <- rtmvnorm(n=1, mean=param$M, sigma=cntl$sigma2.M,
 			upper=1, lower=0)
-	} else if(mod == 1) {
-		proposal$Ne1 <- rtmvnorm(n=1, mean=param$Ne1, sigma=cntl$sigma2.Ne,
-			upper=1e5, lower=1e2)
+		} else if(mod == 1) { 
+			proposal$Ne1 <- rtmvnorm(n=1, mean=param$Ne1, sigma=cntl$sigma2.Ne,
+				upper=1e5, lower=1e2)
 	} else if(mod == 2) {
 		proposal$Ne2 <- rtmvnorm(n=1, mean=param$Ne2, sigma=cntl$sigma2.Ne, 
 			upper=1e5, lower=1e2)	
@@ -89,7 +90,7 @@ wf_mh_step <- function(obs, curr, prev, cntl, init=F) {
 
 # define control for control MCMC	
 cntl <- list() # proposal, log-likelihood, and other deets for MCMC
-cntl$numIters <- 6e4L
+cntl$numIters <- 1e4L
 cntl$currIter <- 1
 cntl$B <- 200L 
 cntl$P <- 6 # number of parameters being sampled
@@ -123,27 +124,27 @@ param <- data.frame(
 param$Ne1[1] <- 5e3L
 param$Ne2[1] <- 5e3L
 param$M <- 0
-param$alpha1[1] <- param$alpha4[1] <- 1.5
+param$alpha1[1] <- param$alpha4[1] <- 1
 param$alpha2[1] <- param$alpha3[1] <- 1
 param$Tmig[1] <- 100L 
 param$Tdiv[1] <- 200L
 
 # generate "pseudo-observed dataset" and fit auxillary model
 # alternatively read in data set (future)
-# rec <- seq(1e-5, 1e-2, length=30)
-# pod <- psv_sim(par=list(T=c(300L, 400L), B=cntl$B, Ne=c(1e4L, 3e3L), 
-#		A=c(0.5, 0.1, 0.1, 0.5), M=0.01))
-# pod <- lapply(pod, unlist)
-# aux <- lapply(pod, auxillary, x=rec)
-# pod$aux <- simplify2array(lapply(aux, "[[", "Y"))
-# pod$sigma <- cov(simplify2array(lapply(aux, "[[", "res")))
-load("pod.RData")
+rec <- seq(1e-5, 1e-2, length=30)
+pod <- psv_sim(par=list(T=c(300L, 400L), B=cntl$B, Ne=c(1e4L, 3e3L), 
+	A=c(0.05, 0.02, 0.02, 0.05), M=0.01))
+pod <- lapply(pod, unlist)
+ aux <- lapply(pod, auxillary, x=rec)
+ pod$aux <- simplify2array(lapply(aux, "[[", "Y"))
+ pod$sigma <- cov(simplify2array(lapply(aux, "[[", "res")))
+#load("pod.RData")
 
 # calculate log-likelihood of initial state of chain
 param[1,] <- wf_mh_step(obs=pod, curr=param[1,], prev=param[1,], cntl=cntl, init=T)
 
 # run chain
-for(iter in 3672:cntl$numIters) {
+for(iter in 2:cntl$numIters) {
 	cntl$currIter <- iter
 	repeat {
 		proposal <- wf_mh_propose(param[iter-1,], cntl)
@@ -161,8 +162,8 @@ for(iter in 3672:cntl$numIters) {
 		param[iter,] <- param[iter-1,] 
 	}
 	cntl$acc[iter-1] <- mh$acc
-	# if(iter %% (cntl$P*2) == 0) {
+	if(iter %% (cntl$P*60) == 0) {
 		print(paste(iter, ":", paste(round(proposal[-10],4), collapse=" "), "|", 
 			paste(round(param[iter,],4), collapse=" ")))
-	# }
+	}
 }
