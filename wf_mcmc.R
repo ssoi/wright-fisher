@@ -9,8 +9,16 @@ dtnorm <- function(x, mean, sd, a, b)
 
 # return coefficients from linear model
 auxillary <- function(y, x) {
-	fit <- lm(y ~ bs(x, df = 3))
+	fit <- nls(Y ~ c0*exp(c1*X+c2*X^2), data=list(Y=y, X=x), start=c(c0=1, c1=1, c2=2))
 	return(list(Y=fitted(fit), res=y-fitted(fit), coef=coef(fit)))
+}
+
+loglik_sample <- function(s2, sigma2, N) {
+	a <- (N-1)/2
+	b <- (N-3)/2
+	s.loglik <- a*(log(N) - log(2*sigma2)) + b*log(s2) - N*s2/(2*sigma2) -lgamma(a)
+	m.loglik <- 0
+	return(s.loglik + m.loglik)
 }
 
 # propose new parameters for Metropolis-Hastings
@@ -135,9 +143,9 @@ rec <- seq(1e-5, 1e-2, length=30)
 pod <- psv_sim(par=list(T=c(300L, 400L), B=cntl$B, Ne=c(1e4L, 3e3L), 
 	A=c(0.05, 0.02, 0.02, 0.05), M=0.01))
 pod <- lapply(pod, unlist)
- aux <- lapply(pod, auxillary, x=rec)
- pod$aux <- simplify2array(lapply(aux, "[[", "Y"))
- pod$sigma <- cov(simplify2array(lapply(aux, "[[", "res")))
+aux <- lapply(pod, auxillary, x=rec)
+pod$aux <- simplify2array(lapply(aux, "[[", "Y"))
+pod$sigma <- cov(simplify2array(lapply(aux, "[[", "res")))
 #load("pod.RData")
 
 # calculate log-likelihood of initial state of chain
