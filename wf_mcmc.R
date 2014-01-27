@@ -13,12 +13,13 @@ auxillary <- function(y, x) {
 	return(list(Y=fitted(fit), res=y-fitted(fit), coef=coef(fit)))
 }
 
-loglik_sample <- function(s2, sigma2, N) {
+loglik_sample <- function(m, s2, mu, sigma2, N) {
+	t <- (m - mu)/sqrt(s2/N)
 	a <- (N-1)/2
 	b <- (N-3)/2
 	s.loglik <- a*(log(N) - log(2*sigma2)) + b*log(s2) - N*s2/(2*sigma2) -lgamma(a)
-	m.loglik <- 0
-	return(s.loglik + m.loglik)
+	m.loglik <- dt(x=t, df=N-1, log=TRUE)
+	return(sum(s.loglik + m.loglik))
 }
 
 # propose new parameters for Metropolis-Hastings
@@ -62,8 +63,11 @@ wf_mh_step <- function(obs, curr, prev, cntl, init=F) {
 	# simulate data with proposed parameters
 	sim <- sapply(psv_sim(par=list(T=t, B=b, Ne=ne, A=a, M=m)), unlist)
 	# fit curve and calculate likelihood based on multivariate normal
-	mu <- colSums(sim	- obs$aux)
-	curr$loglik <- dmvnorm(x=mu, sigma=obs$sigma, log=T)
+	m <- colSums(sim	- obs$aux)
+	s2 <- apply(sim	- obs$aux, 2, var)
+	#curr$loglik <- dmvnorm(x=mu, sigma=obs$sigma, log=T)
+	curr$loglik <- loglik_sample(m=m, s2=s2, mu=rep(0, 4), sigma2=diag(obs$sigma), 
+		N=length(rec))
 	#	calculate appropriate transition densities
 	mod <- cntl$currIter %% cntl$P
 	if(mod == 0) {
@@ -170,7 +174,7 @@ for(iter in 2:cntl$numIters) {
 		param[iter,] <- param[iter-1,] 
 	}
 	cntl$acc[iter-1] <- mh$acc
-	if(iter %% (cntl$P*60) == 0) {
+	if(iter %% (cntl$P*10) == 0) {
 		print(paste(iter, ":", paste(round(proposal[-10],4), collapse=" "), "|", 
 			paste(round(param[iter,],4), collapse=" ")))
 	}
