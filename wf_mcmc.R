@@ -14,11 +14,11 @@ auxillary <- function(y, x) {
 }
 
 loglik_sample <- function(m, s2, mu, sigma2, N) {
-	t <- (m - mu)/sqrt(s2/N)
+	T <- (m - mu)/sqrt(s2/N)
 	a <- (N-1)/2
 	b <- (N-3)/2
 	s.loglik <- a*(log(N) - log(2*sigma2)) + b*log(s2) - N*s2/(2*sigma2) -lgamma(a)
-	m.loglik <- dt(x=t, df=N-1, log=TRUE)
+	m.loglik <- dt(x=T, df=N-1, log=TRUE)
 	return(sum(s.loglik + m.loglik))
 }
 
@@ -54,7 +54,7 @@ wf_mh_propose <- function(param, cntl) {
 }
 
 # Metropolis-Hastings ABC/BIL step
-wf_mh_step <- function(obs, curr, prev, cntl, init=F) {
+wf_mh_step <- function(obs, curr, prev, cntl, plot=F, init=F) {
 	t <- c(curr$Tmig, curr$Tdiv)
 	b <- cntl$B
 	ne <- c(curr$Ne1, curr$Ne2) 
@@ -62,11 +62,29 @@ wf_mh_step <- function(obs, curr, prev, cntl, init=F) {
 	a <- c(curr$alpha1, curr$alpha2, curr$alpha3, curr$alpha4)
 	# simulate data with proposed parameters
 	sim <- sapply(psv_sim(par=list(T=t, B=b, Ne=ne, A=a, M=m)), unlist)
+	if(plot) {
+		plot(rec, sim[,1], col="mediumturquoise", main=paste("D (Pop. 1)\n", cntl$currIter),
+			xlab="rec", ylab="D")
+		lines(rec, obs$aux[,1], lwd=3)
+		points(rec, obs$D1, pch=20, col="mediumturquoise")
+		plot(rec, obs$D2, col="mediumturquoise", main=paste("D (Pop. 2)\n", cntl$currIter),
+			xlab="rec", ylab="D")
+		lines(rec, obs$aux[,2], lwd=3)
+		points(rec, sim[,2], pch=20, col="mediumturquoise")
+		plot(rec, obs$A1, col="mediumturquoise", main=paste("ALDER (Pop. 1)\n", cntl$currIter), 
+			xlab="rec", ylab="ALDER")
+		lines(rec, obs$aux[,3], lwd=3)
+		points(rec, sim[,3], pch=20, col="mediumturquoise")
+		plot(rec, obs$A2, col="mediumturquoise", main=paste("ALDER (Pop. 2)\n", cntl$currIter),
+			xlab="rec", ylab="ALDER")
+		lines(rec, obs$aux[,4], lwd=3)
+		points(rec, sim[,4], pch=20, col="mediumturquoise")
+	}
 	# fit curve and calculate likelihood based on multivariate normal
-	m <- colSums(sim	- obs$aux)
+	xhat <- colSums(sim	- obs$aux)
 	s2 <- apply(sim	- obs$aux, 2, var)
 	#curr$loglik <- dmvnorm(x=mu, sigma=obs$sigma, log=T)
-	curr$loglik <- loglik_sample(m=m, s2=s2, mu=rep(0, 4), sigma2=diag(obs$sigma), 
+	curr$loglik <- loglik_sample(m=xhat, s2=s2, mu=rep(0, 4), sigma2=diag(obs$sigma), 
 		N=length(rec))
 	#	calculate appropriate transition densities
 	mod <- cntl$currIter %% cntl$P
@@ -156,16 +174,18 @@ pod$sigma <- cov(simplify2array(lapply(aux, "[[", "res")))
 param[1,] <- wf_mh_step(obs=pod, curr=param[1,], prev=param[1,], cntl=cntl, init=T)
 
 # run chain
+par(mfrow=c(2, 2))
 for(iter in 2:cntl$numIters) {
 	cntl$currIter <- iter
 	repeat {
+		PLOT <- ifelse(iter %% (cntl$P*10) == 0, TRUE, FALSE)
 		proposal <- wf_mh_propose(param[iter-1,], cntl)
-		mh <- try(wf_mh_step(obs=pod, curr=proposal, prev=param[iter-1,], cntl=cntl))
+		mh <- try(wf_mh_step(obs=pod, curr=proposal, prev=param[iter-1,], cntl=cntl, plot=PLOT))
 		if(class(mh) != "try-error") {
 			break
 		} else {
-			print(proposal)
-			shit <- proposal
+			print(paste("ERROR:", paste(proposal, collapse=" ")))
+			error <- proposal
 		}
 	}	
 	if(mh$acc) {

@@ -12,7 +12,8 @@ using std::vector ;
 
 bool DOMULTI[2] ;
 unsigned int C, i = 0, j = 0, k = 0, l = 0, 
-	b = as<unsigned int>(B), 
+	b = as<unsigned int>(B),
+	s = as<unsigned int>(S),
 	*H = new unsigned int[8] ; // # of alleles in pop. 2
 double p = 0.0, q = 0.0, d, d1, d2, I, 
 	maxU=sqrt(3.0), minU=-sqrt(3.0),
@@ -39,6 +40,7 @@ gsl_rng_env_setup() ;
 gsl_rng * rng ;
 const gsl_rng_type * rngType = gsl_rng_ranlxd1 ;
 rng = gsl_rng_alloc(rngType) ;
+gsl_rng_set(rng, s) ;
 
 // Initialize variables
 DOMULTI[0] = DOMULTI[1] = false ;

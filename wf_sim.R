@@ -12,17 +12,19 @@ psv_2loc_1pop <- cfunction(psv_2loc_1pop_sig, body=psv_2loc_1pop_src, Rcpp=TRUE,
 # load C++ source code for PSV simulation of 2 loci in 1 pop
 psv_2loc_2pop_src <- paste(readLines("psv_2loc_2pop.cpp"), collapse="\n")
 psv_2loc_2pop_sig <- signature(T="integer", B="integer", N="integer", R="numeric", 
-	A="numeric",  M="numeric")
+	A="numeric",  M="numeric", S="integer")
 psv_2loc_2pop <- cfunction(psv_2loc_2pop_sig, body=psv_2loc_2pop_src, Rcpp=TRUE, 
 	includes=c("#include <gsl/gsl_randist.h>", "#include <gsl/gsl_rng.h>"), 
 	libargs="-lgsl -lgslcblas")
 
-psv_sim <- function(par) {
+psv_sim <- function(par, seed=NA) {
 	par$T <- as.integer(round(par$T))
 	par$Ne <- as.integer(round(par$N))
-	mat <- mclapply(rec, function(r)
+	mat <- mclapply(rec, function(r) {
+		if(is.na(seed)) seed <- as.integer(runif(1, 1, 1e9))
 		simplify2array(psv_2loc_2pop(T=par$T, B=par$B, N=par$N, R=r, A=par$A,
-			M=par$M)))
+			M=par$M, S=seed))
+	})
 	d1 <- mclapply(mat, function(r) 
 		mean(apply(r, 2, function(x) x[1]*x[4]-x[2]*x[3]), na.rm=TRUE))
 	d2 <- mclapply(mat, function(r) 
