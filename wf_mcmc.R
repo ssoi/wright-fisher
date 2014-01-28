@@ -120,18 +120,18 @@ wf_mh_step <- function(obs, curr, prev, cntl, plot=F, init=F) {
 
 # define control for control MCMC	
 cntl <- list() # proposal, log-likelihood, and other deets for MCMC
-cntl$numIters <- 1e4L
+cntl$numIters <- 6e4L
 cntl$currIter <- 1
 cntl$B <- 200L 
 cntl$P <- 6 # number of parameters being sampled
-cntl$sigma.M <- 0.001 # variance for migration proposal
+cntl$sigma.M <- 0.01 # variance for migration proposal
 cntl$sigma.Ne <- 4e3 # variance for migration proposal
 cntl$sigma2.M <- cntl$sigma.M^2 # variance for migration proposal
 cntl$sigma2.Ne <- cntl$sigma.Ne^2 # variance for migration proposal
 cntl$sigma.Tmig <- 50 # variance for time of migration proposal
 cntl$sigma.Tdiv <- 50 # variance for time of divergence proposal
-cntl$sigma2.Tmig <- 2500 # variance for time of migration proposal
-cntl$sigma2.Tdiv <- 2500 # variance for time of divergence proposal
+cntl$sigma2.Tmig <- cntl$sigma.Tmig^2 # variance for time of migration proposal
+cntl$sigma2.Tdiv <- cntl$sigma.Tdiv^2 # variance for time of divergence proposal
 cntl$sigma.alpha <- 0.5 # variance for migration proposal
 cntl$sigma2.alpha <- cntl$sigma.alpha^2 # variance for migration proposal
 cntl$acc <- numeric(cntl$numIters-1) # store acceptance rate
@@ -156,8 +156,8 @@ param$Ne2[1] <- 5e3L
 param$M <- 0
 param$alpha1[1] <- param$alpha4[1] <- 1
 param$alpha2[1] <- param$alpha3[1] <- 1
-param$Tmig[1] <- 100L 
-param$Tdiv[1] <- 200L
+param$Tmig[1] <- 500L 
+param$Tdiv[1] <- 1000L
 
 # generate "pseudo-observed dataset" and fit auxillary model
 # alternatively read in data set (future)
